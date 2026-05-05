@@ -230,7 +230,7 @@ class Settings {
 				printf(
 					wp_kses(
 						/* translators: %s: URL to the settings page */
-						__( 'FundRaiseHub is almost ready. Please <a href="%s">configure your API key and site URL</a> to get started.', 'fundraisehub-core' ),
+						__( 'FundRaiseHub is almost ready. Please <a href="%s">configure your API key and API URL</a> to get started.', 'fundraisehub-core' ),
 						array( 'a' => array( 'href' => array() ) )
 					),
 					esc_url( $settings_url )
