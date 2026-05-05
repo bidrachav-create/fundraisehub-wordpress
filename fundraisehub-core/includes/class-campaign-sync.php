@@ -356,6 +356,11 @@ class CampaignSync {
 			}
 		}
 
+		if ( '' === $title ) {
+			/* translators: %s: remote campaign ID */
+			$title = sprintf( __( 'Campaign %s', 'fundraisehub-core' ), $remote_id );
+		}
+
 		$post_data = array(
 			'post_type'   => CampaignCPT::POST_TYPE,
 			'post_title'  => sanitize_text_field( $title ),

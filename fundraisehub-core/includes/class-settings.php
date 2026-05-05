@@ -205,12 +205,6 @@ class Settings {
 	}
 
 	/**
-	 * Handle the Force Re-Sync admin-post action.
-	 *
-	 * @deprecated Replaced by CampaignSync::handle_admin_sync() on admin_post_fundraisehub_sync.
-	 */
-
-	/**
 	 * Show a one-time admin notice prompting the user to complete setup.
 	 */
 	public function maybe_show_setup_notice(): void {
