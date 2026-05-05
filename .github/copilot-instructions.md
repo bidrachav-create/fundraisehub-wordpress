@@ -65,12 +65,14 @@ composer run test             # Run PHPUnit unit tests
 ### JavaScript / Blocks (npm)
 
 ```bash
-npm install                   # Install JS dev dependencies (@wordpress/scripts)
+npm ci                        # Install JS dev dependencies from package-lock.json (CI/reproducible)
 npm run build                 # Production build (webpack via @wordpress/scripts)
 npm run start                 # Development watch mode
 npm run lint:js               # ESLint JS files
 npm run lint:css              # Stylelint CSS files
 ```
+
+> **Note:** Use `npm ci` in CI/automated environments (reads `package-lock.json` exactly). Use `npm install` on a local machine when you need to add or update dependencies (this regenerates `package-lock.json`).
 
 Block entry points are declared in `webpack.config.js`. When adding a new block, add its entry point there and place the block source under `fundraisehub-core/blocks/{block-name}/`.
 
@@ -87,8 +89,8 @@ Block entry points are declared in `webpack.config.js`. When adding a new block,
 - **WordPress APIs:** Always use WP HTTP API (`wp_remote_get`, `wp_remote_post`), transients, options, and hooks. Do not use raw `curl` or PDO.
 - **Security:** Always escape output (`esc_html`, `esc_attr`, `esc_url`, `wp_kses_post`), sanitize input (`sanitize_text_field`, `esc_url_raw`), and verify nonces where applicable.
 - **Internationalisation:** Wrap all user-facing strings in `__()`, `_x()`, `esc_html__()`, etc. with text domain `fundraisehub-core` or `fundraisehub-elementor`.
-- **Docblocks:** All classes and public/protected methods must have a PHPDoc block with `@param` and `@return` tags.
-- **ABSPATH guard:** Every PHP file starts with `if ( ! defined( 'ABSPATH' ) ) { exit; }` (after the `declare` and namespace statements).
+- **Docblocks:** All classes and public/protected methods must have a PHPDoc block. Include `@param` and `@return` tags where they add meaningful type/description information; omit them for methods with no parameters or a `void` return type when the docblock summary alone is sufficient.
+- **ABSPATH guard:** Production plugin PHP files include `if ( ! defined( 'ABSPATH' ) ) { exit; }` after the `declare` and namespace statements. Exceptions: `uninstall.php` guards on `WP_UNINSTALL_PLUGIN` instead (per WordPress convention), and test files under `tests/` do not need this guard.
 - **WordPress version target:** Always use APIs available in WordPress 6.4+. Check `Requires at least:` headers in plugin files.
 
 ### JavaScript / Blocks
