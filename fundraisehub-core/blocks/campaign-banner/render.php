@@ -22,15 +22,15 @@ if ( ! is_array( $campaign_data ) ) {
 	return;
 }
 
-$layout      = $campaign_data['layout'] ?? array();
-$block_cfg   = $layout['banner'] ?? array();
+$layout    = $campaign_data['layout'] ?? array();
+$block_cfg = $layout['banner'] ?? array();
 
 if ( empty( $block_cfg['enabled'] ) ) {
 	return;
 }
 
-$banner_url = esc_url( (string) ( $campaign_data['banner_url'] ?? $campaign_data['banner_image'] ?? '' ) );
-$title      = esc_attr( (string) ( $campaign_data['name'] ?? $campaign_data['title'] ?? '' ) );
+$banner_url     = esc_url( (string) ( $campaign_data['banner_url'] ?? $campaign_data['banner_image'] ?? '' ) );
+$campaign_title = esc_attr( (string) ( $campaign_data['name'] ?? $campaign_data['title'] ?? '' ) );
 
 if ( ! $banner_url ) {
 	return;
@@ -40,7 +40,7 @@ if ( ! $banner_url ) {
 <div <?php echo get_block_wrapper_attributes( array( 'class' => 'fundraisehub-campaign-banner' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<img
 		src="<?php echo esc_url( $banner_url ); ?>"
-		alt="<?php echo esc_attr( $title ); ?>"
+		alt="<?php echo esc_attr( $campaign_title ); ?>"
 		class="fundraisehub-campaign-banner__image"
 	/>
 </div>

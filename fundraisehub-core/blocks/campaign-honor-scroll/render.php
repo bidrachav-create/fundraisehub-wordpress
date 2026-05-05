@@ -43,10 +43,11 @@ if ( empty( $donors ) ) {
 ?>
 <div <?php echo get_block_wrapper_attributes( array( 'class' => 'fundraisehub-campaign-honor-scroll' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<ul class="fundraisehub-campaign-honor-scroll__list">
-		<?php foreach ( $donors as $donor ) :
+		<?php
+		foreach ( $donors as $donor ) :
 			$name   = esc_html( (string) ( $donor['name'] ?? $donor['donor_name'] ?? __( 'Anonymous', 'fundraisehub-core' ) ) );
 			$amount = (float) ( $donor['amount'] ?? 0 );
-		?>
+			?>
 			<li class="fundraisehub-campaign-honor-scroll__item">
 				<span class="fundraisehub-campaign-honor-scroll__name"><?php echo $name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already escaped ?></span>
 				<?php if ( $amount > 0 ) : ?>

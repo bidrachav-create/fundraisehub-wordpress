@@ -1,7 +1,6 @@
 import { __ } from '@wordpress/i18n';
 import { useBlockProps } from '@wordpress/block-editor';
 import { Placeholder } from '@wordpress/components';
-import { lock } from '@wordpress/icons';
 
 export default function Edit() {
 	const blockProps = useBlockProps();

@@ -29,25 +29,26 @@ if ( empty( $block_cfg['enabled'] ) ) {
 	return;
 }
 
-$comments = array();
+$campaign_comments = array();
 if ( ! empty( $campaign_data['comments'] ) && is_array( $campaign_data['comments'] ) ) {
-	$comments = $campaign_data['comments'];
+	$campaign_comments = $campaign_data['comments'];
 }
 
-if ( empty( $comments ) ) {
+if ( empty( $campaign_comments ) ) {
 	return;
 }
 
 ?>
 <div <?php echo get_block_wrapper_attributes( array( 'class' => 'fundraisehub-campaign-comments' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<ul class="fundraisehub-campaign-comments__list">
-		<?php foreach ( $comments as $comment ) :
-			$author  = esc_html( (string) ( $comment['author'] ?? $comment['name'] ?? __( 'Anonymous', 'fundraisehub-core' ) ) );
-			$message = wp_kses_post( (string) ( $comment['message'] ?? $comment['body'] ?? $comment['comment'] ?? '' ) );
+		<?php
+		foreach ( $campaign_comments as $campaign_comment ) :
+			$author  = esc_html( (string) ( $campaign_comment['author'] ?? $campaign_comment['name'] ?? __( 'Anonymous', 'fundraisehub-core' ) ) );
+			$message = wp_kses_post( (string) ( $campaign_comment['message'] ?? $campaign_comment['body'] ?? $campaign_comment['comment'] ?? '' ) );
 			if ( '' === $message ) {
 				continue;
 			}
-		?>
+			?>
 			<li class="fundraisehub-campaign-comments__item">
 				<span class="fundraisehub-campaign-comments__author"><?php echo $author; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already escaped ?></span>
 				<div class="fundraisehub-campaign-comments__message"><?php echo $message; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_kses_post applied ?></div>

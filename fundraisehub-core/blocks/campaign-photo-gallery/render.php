@@ -43,10 +43,11 @@ if ( empty( $images ) ) {
 ?>
 <div <?php echo get_block_wrapper_attributes( array( 'class' => 'fundraisehub-campaign-photo-gallery' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<ul class="fundraisehub-campaign-photo-gallery__grid">
-		<?php foreach ( $images as $image ) :
+		<?php
+		foreach ( $images as $image ) :
 			$src = esc_url( (string) ( $image['url'] ?? $image['src'] ?? $image ) );
 			$alt = esc_attr( (string) ( $image['alt'] ?? $image['caption'] ?? '' ) );
-		?>
+			?>
 			<?php if ( $src ) : ?>
 				<li class="fundraisehub-campaign-photo-gallery__item">
 					<img

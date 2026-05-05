@@ -24,8 +24,8 @@
     ]
   },
   "scripts": {
-    "phpcs": "phpcs --standard=WordPress fundraisehub-core fundraisehub-elementor",
-    "phpcbf": "phpcbf --standard=WordPress fundraisehub-core fundraisehub-elementor",
+    "phpcs": "phpcs --standard=phpcs.xml",
+    "phpcbf": "phpcbf --standard=phpcs.xml",
     "test": "phpunit --configuration phpunit.xml"
   },
   "config": {

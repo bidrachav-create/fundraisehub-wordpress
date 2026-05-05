@@ -15,8 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$post_id       = get_the_ID();
-$campaign_data = get_post_meta( $post_id, '_fundraisehub_campaign_data', true );
+$frhub_post_id = get_the_ID();
+$campaign_data = get_post_meta( $frhub_post_id, '_fundraisehub_campaign_data', true );
 
 if ( ! $campaign_data ) {
 	return;

@@ -1,7 +1,6 @@
 import { __ } from '@wordpress/i18n';
 import { useBlockProps, InnerBlocks } from '@wordpress/block-editor';
 import { Placeholder } from '@wordpress/components';
-import { lock } from '@wordpress/icons';
 
 const ALLOWED_BLOCKS = [
 	'fundraisehub/campaign-banner',
@@ -29,7 +28,7 @@ export default function Edit() {
 		return (
 			<div { ...blockProps }>
 				<Placeholder
-					icon={ lock }
+					icon="lock"
 					label={ __( 'FundRaiseHub Campaign', 'fundraisehub-core' ) }
 					instructions={ __(
 						'Configure your FundRaiseHub API key in Settings → FundRaiseHub to use this block.',

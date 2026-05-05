@@ -1,0 +1,1 @@
+document.querySelectorAll(".fundraisehub-campaign-honor-scroll__list").forEach(e=>{if(e.children.length<2)return;let t=0;e.firstElementChild;const r=e.scrollHeight,n=e.cloneNode(!0);n.setAttribute("aria-hidden","true"),e.parentNode.appendChild(n),requestAnimationFrame(function n(){t+=.5,t>=r/2&&(t=0),e.style.transform="translateY(-"+t+"px)",requestAnimationFrame(n)})});

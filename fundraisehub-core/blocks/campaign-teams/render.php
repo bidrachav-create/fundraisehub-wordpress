@@ -41,10 +41,11 @@ if ( empty( $teams ) ) {
 ?>
 <div <?php echo get_block_wrapper_attributes( array( 'class' => 'fundraisehub-campaign-teams' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<ol class="fundraisehub-campaign-teams__list">
-		<?php foreach ( $teams as $index => $team ) :
+		<?php
+		foreach ( $teams as $index => $team ) :
 			$team_name   = esc_html( (string) ( $team['name'] ?? $team['team_name'] ?? '' ) );
 			$team_raised = number_format( (float) ( $team['amount_raised'] ?? $team['raised'] ?? 0 ), 2 );
-		?>
+			?>
 			<li class="fundraisehub-campaign-teams__item">
 				<span class="fundraisehub-campaign-teams__rank"><?php echo esc_html( (string) ( $index + 1 ) ); ?></span>
 				<span class="fundraisehub-campaign-teams__name"><?php echo $team_name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already escaped ?></span>
