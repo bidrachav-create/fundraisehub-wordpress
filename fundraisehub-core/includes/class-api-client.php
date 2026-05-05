@@ -25,6 +25,9 @@ class ApiClient {
 	/** Transient key prefix for all API response caches. */
 	private const TRANSIENT_PREFIX = 'fundraisehub_api_';
 
+	/** Option key that stores the global cache version integer. */
+	private const CACHE_VER_OPTION = 'fundraisehub_api_cache_ver';
+
 	/** Cache time-to-live in seconds for GET responses. */
 	private const CACHE_TTL = 60;
 
@@ -53,10 +56,24 @@ class ApiClient {
 	 * @param string $api_key  API key / token.
 	 */
 	public function __construct( string $base_url = '', string $api_key = '' ) {
-		$this->base_url = rtrim(
-			$base_url ? $base_url : (string) get_option( 'fundraisehub_api_url', 'https://app.fundraisehub.com' ),
-			'/'
-		);
+		if ( '' !== $base_url ) {
+			$resolved_url = $base_url;
+		} else {
+			$resolved_url = (string) get_option( 'fundraisehub_api_url', '' );
+
+			// Fall back to the legacy option key used before the rename so that
+			// existing installs do not silently revert to the default URL.
+			if ( '' === $resolved_url ) {
+				$resolved_url = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
+			}
+
+			// Ensure we always have *some* base URL.
+			if ( '' === $resolved_url ) {
+				$resolved_url = 'https://app.fundraisehub.com';
+			}
+		}
+
+		$this->base_url = rtrim( $resolved_url, '/' );
 		$this->api_key  = $api_key ? $api_key : (string) get_option( 'fundraisehub_api_key', '' );
 	}
 
@@ -72,7 +89,14 @@ class ApiClient {
 	 * @return mixed[]|\WP_Error Decoded JSON body on success, WP_Error on failure.
 	 */
 	public function get( string $endpoint, array $params = array() ): array|\WP_Error {
-		$transient_key = self::TRANSIENT_PREFIX . ltrim( $endpoint, '/' ) . '_' . md5( (string) wp_json_encode( $params ) );
+		// Build a safe, fixed-length transient key.
+		// Hashing both endpoint and params avoids issues with '/' chars in endpoint
+		// paths being altered/truncated by WordPress's transient key sanitisation, and
+		// keeps the total key length well within the 172-character options-table limit.
+		// The cache version prefix ensures bust_cache() works even when an external
+		// object cache (Redis/Memcached) is in use.
+		$version       = $this->get_cache_version();
+		$transient_key = self::TRANSIENT_PREFIX . 'v' . $version . '_' . md5( $endpoint . ':' . (string) wp_json_encode( $params ) );
 		$cached        = get_transient( $transient_key );
 
 		if ( false !== $cached && is_array( $cached ) ) {
@@ -128,29 +152,43 @@ class ApiClient {
 	}
 
 	/**
-	 * Delete all transients whose option-table key starts with the given prefix.
+	 * Invalidate cached GET responses.
 	 *
-	 * Pass an empty string to clear every transient belonging to this client.
-	 * Pass an endpoint name (e.g. 'campaigns') to clear only that endpoint's
-	 * cached responses. Call after saving settings or forcing a sync.
+	 * Increments the global cache version stored in wp_options so that all
+	 * subsequent requests use a new transient key. This works regardless of
+	 * whether an external object cache (Redis, Memcached, etc.) is active,
+	 * because the version change causes every cached key to be effectively
+	 * unreachable; previously stored entries expire naturally via their TTL.
 	 *
-	 * @param string $endpoint_prefix Endpoint prefix to match, or '' for all.
+	 * When no external object cache is in use the method also deletes stale
+	 * transient rows from the database directly, providing immediate cleanup.
+	 *
+	 * @param string $endpoint_prefix Endpoint prefix to scope DB cleanup, or '' for all.
 	 */
 	public function bust_cache( string $endpoint_prefix ): void {
-		global $wpdb;
+		// Bump the global version — new transient keys will differ from old ones,
+		// so external object caches will not serve stale data.
+		$new_version = $this->get_cache_version() + 1;
+		update_option( self::CACHE_VER_OPTION, $new_version, false );
 
-		$key_prefix   = self::TRANSIENT_PREFIX . $endpoint_prefix;
-		$like_value   = $wpdb->esc_like( '_transient_' . $key_prefix ) . '%';
-		$like_timeout = $wpdb->esc_like( '_transient_timeout_' . $key_prefix ) . '%';
+		// For sites using the default database transient store (no external cache),
+		// also delete the stale rows immediately so they do not accumulate.
+		if ( ! wp_using_ext_object_cache() ) {
+			global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->query(
-			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-				$like_value,
-				$like_timeout
-			)
-		);
+			$key_prefix   = self::TRANSIENT_PREFIX . $endpoint_prefix;
+			$like_value   = $wpdb->esc_like( '_transient_' . $key_prefix ) . '%';
+			$like_timeout = $wpdb->esc_like( '_transient_timeout_' . $key_prefix ) . '%';
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+					$like_value,
+					$like_timeout
+				)
+			);
+		}
 	}
 
 	/**
@@ -184,6 +222,18 @@ class ApiClient {
 	// -------------------------------------------------------------------------
 	// Private helpers
 	// -------------------------------------------------------------------------
+
+	/**
+	 * Return the current global cache version from wp_options.
+	 *
+	 * The version is incremented by bust_cache() to invalidate all cached
+	 * transients without needing to enumerate individual keys.
+	 *
+	 * @return int
+	 */
+	private function get_cache_version(): int {
+		return (int) get_option( self::CACHE_VER_OPTION, 1 );
+	}
 
 	/**
 	 * Build a full URL from an endpoint path and optional query parameters.

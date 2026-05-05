@@ -101,7 +101,7 @@ class Settings {
 
 		add_settings_field(
 			'fundraisehub_api_url',
-			__( 'FundRaiseHub Site URL', 'fundraisehub-core' ),
+			__( 'API URL', 'fundraisehub-core' ),
 			array( $this, 'render_api_url_field' ),
 			self::PAGE_SLUG,
 			'fundraisehub_api_section'
@@ -303,9 +303,23 @@ class Settings {
 
 	/**
 	 * Render the API URL input field.
+	 *
+	 * Pre-fills from the legacy `fundraisehub_site_url` option when the
+	 * current option has not been saved yet, so upgraders see their
+	 * existing URL rather than the default placeholder.
 	 */
 	public function render_api_url_field(): void {
-		$value = (string) get_option( 'fundraisehub_api_url', 'https://app.fundraisehub.com' );
+		$value = (string) get_option( 'fundraisehub_api_url', '' );
+
+		// Backward-compat: migrate from the legacy option key on first view.
+		if ( '' === $value ) {
+			$value = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
+		}
+
+		if ( '' === $value ) {
+			$value = 'https://app.fundraisehub.com';
+		}
+
 		echo '<input type="url" id="fundraisehub_api_url" name="fundraisehub_api_url" value="' . esc_attr( $value ) . '" class="regular-text" placeholder="https://app.fundraisehub.com" />';
 		echo '<p class="description">' . esc_html__( 'The base URL of your FundRaiseHub installation.', 'fundraisehub-core' ) . '</p>';
 	}
@@ -352,7 +366,16 @@ class Settings {
 	 */
 	public function render_scope_info_field(): void {
 		$api_key = (string) get_option( 'fundraisehub_api_key', '' );
-		$api_url = (string) get_option( 'fundraisehub_api_url', 'https://app.fundraisehub.com' );
+		$api_url = (string) get_option( 'fundraisehub_api_url', '' );
+
+		// Backward-compat: fall back to legacy option key.
+		if ( '' === $api_url ) {
+			$api_url = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
+		}
+
+		if ( '' === $api_url ) {
+			$api_url = 'https://app.fundraisehub.com';
+		}
 
 		if ( '' === $api_key ) {
 			echo '<p class="description">' .
