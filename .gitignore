@@ -1,0 +1,38 @@
+# Dependency directories
+vendor/
+node_modules/
+
+# Build artifacts
+fundraisehub-core/assets/js/*.min.js
+fundraisehub-core/assets/css/*.min.css
+fundraisehub-core/blocks/**/build/
+fundraisehub-core/blocks/**/index.asset.php
+
+# WordPress auto-generated files
+*.log
+wp-content/
+
+# macOS metadata
+.DS_Store
+
+# Editor / IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Composer lock for libraries (keep for applications)
+# composer.lock
+
+# npm / yarn lock files – keep for reproducible builds
+# package-lock.json
+# yarn.lock
+
+# Zip distributions
+*.zip

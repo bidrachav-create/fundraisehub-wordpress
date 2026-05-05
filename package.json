@@ -1,0 +1,19 @@
+{
+  "name": "fundraisehub-wordpress",
+  "version": "1.0.0",
+  "description": "Block build tooling for FundRaiseHub WordPress plugins",
+  "private": true,
+  "scripts": {
+    "build": "wp-scripts build",
+    "start": "wp-scripts start",
+    "lint:js": "wp-scripts lint-js",
+    "lint:css": "wp-scripts lint-style",
+    "packages-update": "wp-scripts packages-update"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "^30.0.0"
+  },
+  "wp-scripts": {
+    "webpack-config": "webpack.config.js"
+  }
+}
