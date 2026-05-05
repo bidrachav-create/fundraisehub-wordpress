@@ -25,7 +25,7 @@ class BlockRegistry {
 	 * Hook the registration callback into WordPress.
 	 */
 	public function register(): void {
-		add_action( 'init', [ $this, 'register_blocks' ] );
+		add_action( 'init', array( $this, 'register_blocks' ) );
 	}
 
 	/**

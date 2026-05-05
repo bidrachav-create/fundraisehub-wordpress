@@ -34,14 +34,14 @@ if ( file_exists( __DIR__ . '/../vendor/autoload.php' ) ) {
 }
 
 // Manually require class files when Composer autoload is not available.
-$includes = [
+$includes = array(
 	'includes/class-settings.php',
 	'includes/class-api-client.php',
 	'includes/class-campaign-cpt.php',
 	'includes/class-block-registry.php',
 	'includes/class-shortcode-registry.php',
 	'includes/class-campaign-sync.php',
-];
+);
 
 foreach ( $includes as $file ) {
 	$path = FUNDRAISEHUB_CORE_DIR . $file;

@@ -27,8 +27,8 @@ class Settings {
 	/** Settings page slug. */
 	private const PAGE_SLUG = 'fundraisehub-settings';
 
-	/** Admin-post action for the Force Re-Sync button. */
-	private const RESYNC_ACTION = 'fundraisehub_force_resync';
+	/** Admin-post action for the Sync Now button (handled by CampaignSync). */
+	private const SYNC_ACTION = 'fundraisehub_sync';
 
 	/**
 	 * Hook everything into WordPress.
@@ -38,11 +38,29 @@ class Settings {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_notices', array( $this, 'maybe_show_setup_notice' ) );
 		add_action( 'admin_notices', array( $this, 'maybe_show_resync_notice' ) );
-		add_action( 'admin_post_' . self::RESYNC_ACTION, array( $this, 'handle_force_resync' ) );
 
 		// Dismiss the setup flag after settings are saved (nonce already verified by options.php).
 		add_action( 'update_option_fundraisehub_api_key', array( $this, 'dismiss_setup_flag' ) );
 		add_action( 'update_option_fundraisehub_api_url', array( $this, 'dismiss_setup_flag' ) );
+
+		// Flush rewrite rules when the campaign archive slug is changed so the
+		// new URL takes effect without requiring a manual permalink re-save.
+		add_action( 'update_option_fundraisehub_campaign_slug', array( $this, 'flush_rewrite_on_slug_change' ), 10, 2 );
+	}
+
+	/**
+	 * Flush rewrite rules when the campaign archive slug option changes.
+	 *
+	 * Called by `update_option_fundraisehub_campaign_slug` which fires only
+	 * after WordPress has already verified the nonce via options.php.
+	 *
+	 * @param mixed $old_value Previous option value.
+	 * @param mixed $new_value New option value.
+	 */
+	public function flush_rewrite_on_slug_change( mixed $old_value, mixed $new_value ): void {
+		if ( $old_value !== $new_value ) {
+			flush_rewrite_rules();
+		}
 	}
 
 	/**
@@ -92,6 +110,16 @@ class Settings {
 			)
 		);
 
+		register_setting(
+			self::OPTION_GROUP,
+			'fundraisehub_campaign_slug',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_title',
+				'default'           => 'campaigns',
+			)
+		);
+
 		add_settings_section(
 			'fundraisehub_api_section',
 			__( 'API Connection', 'fundraisehub-core' ),
@@ -121,6 +149,21 @@ class Settings {
 			array( $this, 'render_scope_info_field' ),
 			self::PAGE_SLUG,
 			'fundraisehub_api_section'
+		);
+
+		add_settings_section(
+			'fundraisehub_display_section',
+			__( 'Display Settings', 'fundraisehub-core' ),
+			'__return_false',
+			self::PAGE_SLUG
+		);
+
+		add_settings_field(
+			'fundraisehub_campaign_slug',
+			__( 'Campaign Archive Slug', 'fundraisehub-core' ),
+			array( $this, 'render_campaign_slug_field' ),
+			self::PAGE_SLUG,
+			'fundraisehub_display_section'
 		);
 	}
 
@@ -178,36 +221,6 @@ class Settings {
 		}
 
 		return $value;
-	}
-
-	/**
-	 * Handle the Force Re-Sync admin-post action.
-	 *
-	 * Clears all API transients and triggers a full campaign sync, then
-	 * redirects back to the settings page with a success flag.
-	 */
-	public function handle_force_resync(): void {
-		check_admin_referer( self::RESYNC_ACTION );
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to perform this action.', 'fundraisehub-core' ) );
-		}
-
-		$api = new ApiClient();
-		$api->bust_cache( '' );
-
-		( new CampaignSync( $api ) )->sync_all();
-
-		wp_safe_redirect(
-			add_query_arg(
-				array(
-					'page'                => self::PAGE_SLUG,
-					'fundraisehub_synced' => '1',
-				),
-				admin_url( 'options-general.php' )
-			)
-		);
-		exit;
 	}
 
 	/**
@@ -284,11 +297,11 @@ class Settings {
 			<hr />
 
 			<h2><?php esc_html_e( 'Sync Campaigns', 'fundraisehub-core' ); ?></h2>
-			<p><?php esc_html_e( 'Clear the API cache and fetch the latest campaign data from FundRaiseHub.', 'fundraisehub-core' ); ?></p>
+			<p><?php esc_html_e( 'Fetch the latest campaign data from FundRaiseHub and update your local posts.', 'fundraisehub-core' ); ?></p>
 			<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
-				<input type="hidden" name="action" value="<?php echo esc_attr( self::RESYNC_ACTION ); ?>" />
-				<?php wp_nonce_field( self::RESYNC_ACTION ); ?>
-				<?php submit_button( __( 'Force Re-Sync', 'fundraisehub-core' ), 'secondary', 'fundraisehub_resync_submit', false ); ?>
+				<input type="hidden" name="action" value="<?php echo esc_attr( self::SYNC_ACTION ); ?>" />
+				<?php wp_nonce_field( self::SYNC_ACTION ); ?>
+				<?php submit_button( __( 'Sync Now', 'fundraisehub-core' ), 'secondary', 'fundraisehub_sync_submit', false ); ?>
 			</form>
 		</div>
 		<?php
@@ -408,5 +421,17 @@ class Settings {
 			esc_html_e( 'Connected.', 'fundraisehub-core' );
 		}
 		echo '</p>';
+	}
+
+	/**
+	 * Render the Campaign Archive Slug input field.
+	 */
+	public function render_campaign_slug_field(): void {
+		$value = (string) get_option( 'fundraisehub_campaign_slug', 'campaigns' );
+		if ( '' === $value ) {
+			$value = 'campaigns';
+		}
+		echo '<input type="text" id="fundraisehub_campaign_slug" name="fundraisehub_campaign_slug" value="' . esc_attr( $value ) . '" class="regular-text" />';
+		echo '<p class="description">' . esc_html__( 'URL slug for the campaign archive page (default: campaigns). Changing this requires saving and then re-saving your WordPress permalinks.', 'fundraisehub-core' ) . '</p>';
 	}
 }
