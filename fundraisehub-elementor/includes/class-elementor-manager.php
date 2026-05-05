@@ -25,7 +25,7 @@ class ElementorManager {
 	 * Hook registration into Elementor's lifecycle.
 	 */
 	public function register(): void {
-		add_action( 'elementor/widgets/register', [ $this, 'register_widgets' ] );
+		add_action( 'elementor/widgets/register', array( $this, 'register_widgets' ) );
 	}
 
 	/**

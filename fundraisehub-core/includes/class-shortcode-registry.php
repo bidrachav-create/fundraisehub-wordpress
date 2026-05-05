@@ -28,15 +28,15 @@ class ShortcodeRegistry {
 	 * Hook shortcode registrations into WordPress.
 	 */
 	public function register(): void {
-		add_action( 'init', [ $this, 'register_shortcodes' ] );
+		add_action( 'init', array( $this, 'register_shortcodes' ) );
 	}
 
 	/**
 	 * Register all shortcodes.
 	 */
 	public function register_shortcodes(): void {
-		add_shortcode( 'fundraisehub_campaign', [ $this, 'render_campaign' ] );
-		add_shortcode( 'fundraisehub_campaign_list', [ $this, 'render_campaign_list' ] );
+		add_shortcode( 'fundraisehub_campaign', array( $this, 'render_campaign' ) );
+		add_shortcode( 'fundraisehub_campaign_list', array( $this, 'render_campaign_list' ) );
 	}
 
 	/**
@@ -48,10 +48,10 @@ class ShortcodeRegistry {
 	 */
 	public function render_campaign( array|string $atts ): string {
 		$atts = shortcode_atts(
-			[
+			array(
 				'id'    => '',
 				'class' => '',
-			],
+			),
 			$atts,
 			'fundraisehub_campaign'
 		);
@@ -81,21 +81,21 @@ class ShortcodeRegistry {
 	 */
 	public function render_campaign_list( array|string $atts ): string {
 		$atts = shortcode_atts(
-			[
+			array(
 				'limit'    => 10,
 				'category' => '',
 				'class'    => '',
-			],
+			),
 			$atts,
 			'fundraisehub_campaign_list'
 		);
 
 		$sync      = new CampaignSync();
 		$campaigns = $sync->get_campaigns(
-			[
+			array(
 				'per_page' => (int) $atts['limit'],
 				'category' => (string) $atts['category'],
-			]
+			)
 		);
 
 		if ( is_wp_error( $campaigns ) || empty( $campaigns ) ) {
