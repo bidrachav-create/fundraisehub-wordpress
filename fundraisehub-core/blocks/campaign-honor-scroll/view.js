@@ -8,17 +8,17 @@ document.querySelectorAll( '.fundraisehub-campaign-honor-scroll__list' ).forEach
 		return;
 	}
 
-	let offset   = 0;
-	const speed  = 0.5; // pixels per frame
-	const itemH  = list.firstElementChild?.offsetHeight ?? 40;
-	const total  = list.scrollHeight;
+	let scrollOffset         = 0;
+	const speed              = 0.5; // pixels per frame
+	const itemHeight         = list.firstElementChild?.offsetHeight ?? 40;
+	const totalScrollHeight  = list.scrollHeight;
 
 	function tick() {
-		offset += speed;
-		if ( offset >= total / 2 ) {
-			offset = 0;
+		scrollOffset += speed;
+		if ( scrollOffset >= totalScrollHeight / 2 ) {
+			scrollOffset = 0;
 		}
-		list.style.transform = 'translateY(-' + offset + 'px)';
+		list.style.transform = 'translateY(-' + scrollOffset + 'px)';
 		requestAnimationFrame( tick );
 	}
 
