@@ -133,31 +133,60 @@ class CampaignSync {
 	/**
 	 * Sync all campaigns and refresh transient caches.
 	 *
+	 * Paginates through every page of the API and refreshes individual
+	 * campaign transients. All existing list-query transients are cleared
+	 * so stale paginated results are not served after a sync.
+	 *
 	 * Intended to be called by WP-Cron or manually by an admin action.
 	 */
 	public function sync_all(): void {
-		// Clear the list cache.
-		delete_transient( self::LIST_TRANSIENT );
+		global $wpdb;
 
-		$response = $this->api->get( '/campaigns', [ 'per_page' => 100 ] );
+		// Delete every hashed list transient (both value and timeout rows).
+		$like_value   = $wpdb->esc_like( '_transient_' . self::LIST_TRANSIENT . '_' ) . '%';
+		$like_timeout = $wpdb->esc_like( '_transient_timeout_' . self::LIST_TRANSIENT . '_' ) . '%';
 
-		if ( is_wp_error( $response ) ) {
-			return;
-		}
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+				$like_value,
+				$like_timeout
+			)
+		);
 
-		$campaigns = $response['data'] ?? $response;
+		// Paginate through all remote campaigns.
+		$page        = 1;
+		$total_pages = 1;
 
-		if ( ! is_array( $campaigns ) ) {
-			return;
-		}
+		do {
+			$response = $this->api->get( '/campaigns', [ 'per_page' => 100, 'page' => $page ] );
 
-		foreach ( $campaigns as $campaign ) {
-			if ( empty( $campaign['id'] ) ) {
-				continue;
+			if ( is_wp_error( $response ) ) {
+				break;
 			}
 
-			$transient_key = self::CAMPAIGN_TRANSIENT_PREFIX . sanitize_key( (string) $campaign['id'] );
-			set_transient( $transient_key, $campaign, self::CACHE_TTL );
-		}
+			// API may return { data: [...], meta: { total_pages: N } } or a plain array.
+			$campaigns = $response['data'] ?? $response;
+
+			if ( isset( $response['meta']['total_pages'] ) ) {
+				$total_pages = (int) $response['meta']['total_pages'];
+			}
+
+			if ( ! is_array( $campaigns ) || empty( $campaigns ) ) {
+				break;
+			}
+
+			foreach ( $campaigns as $campaign ) {
+				if ( empty( $campaign['id'] ) ) {
+					continue;
+				}
+
+				$transient_key = self::CAMPAIGN_TRANSIENT_PREFIX . sanitize_key( (string) $campaign['id'] );
+				set_transient( $transient_key, $campaign, self::CACHE_TTL );
+			}
+
+			$page++;
+		} while ( $page <= $total_pages );
 	}
 }

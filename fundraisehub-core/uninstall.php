@@ -14,12 +14,13 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
+global $wpdb;
+
 // Delete all plugin options.
 $options = [
 	'fundraisehub_needs_setup',
 	'fundraisehub_api_key',
 	'fundraisehub_site_url',
-	'fundraisehub_campaign_cache',
 ];
 
 foreach ( $options as $option ) {
@@ -30,4 +31,22 @@ foreach ( $options as $option ) {
 $timestamp = wp_next_scheduled( 'fundraisehub_campaign_sync' );
 if ( $timestamp ) {
 	wp_unschedule_event( $timestamp, 'fundraisehub_campaign_sync' );
+}
+
+// Delete all campaign transients (individual campaign cache + all list query caches).
+$prefixes = [
+	'_transient_fundraisehub_campaign_',
+	'_transient_timeout_fundraisehub_campaign_',
+	'_transient_fundraisehub_campaign_list_',
+	'_transient_timeout_fundraisehub_campaign_list_',
+];
+
+foreach ( $prefixes as $prefix ) {
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+	$wpdb->query(
+		$wpdb->prepare(
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+			$wpdb->esc_like( $prefix ) . '%'
+		)
+	);
 }

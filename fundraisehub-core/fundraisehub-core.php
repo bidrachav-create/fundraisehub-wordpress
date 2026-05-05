@@ -59,9 +59,9 @@ function fundraisehub_core_activate(): void {
 		add_option( 'fundraisehub_needs_setup', true );
 	}
 
-	// Register CPT so rewrite rules include it.
-	$cpt = new CampaignCPT();
-	$cpt->register();
+	// Call register_post_type() directly so the CPT exists before
+	// flush_rewrite_rules() runs (the 'init' hook has not fired yet).
+	( new CampaignCPT() )->register_post_type();
 
 	flush_rewrite_rules();
 }
@@ -71,6 +71,12 @@ register_activation_hook( __FILE__, __NAMESPACE__ . '\\fundraisehub_core_activat
  * Plugin deactivation hook.
  */
 function fundraisehub_core_deactivate(): void {
+	// Unschedule the recurring sync cron so it does not fire while inactive.
+	$timestamp = wp_next_scheduled( 'fundraisehub_campaign_sync' );
+	if ( $timestamp ) {
+		wp_unschedule_event( $timestamp, 'fundraisehub_campaign_sync' );
+	}
+
 	flush_rewrite_rules();
 }
 register_deactivation_hook( __FILE__, __NAMESPACE__ . '\\fundraisehub_core_deactivate' );

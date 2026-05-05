@@ -35,6 +35,13 @@ define( 'FUNDRAISEHUB_ELEMENTOR_URL', plugin_dir_url( __FILE__ ) );
  * and Elementor are active before registering anything.
  */
 function fundraisehub_elementor_init(): void {
+	// Load the text domain first so dependency notices are translatable.
+	load_plugin_textdomain(
+		'fundraisehub-elementor',
+		false,
+		dirname( plugin_basename( __FILE__ ) ) . '/languages'
+	);
+
 	// Dependency check: FundRaiseHub Core.
 	if ( ! defined( 'FUNDRAISEHUB_CORE_VERSION' ) ) {
 		add_action( 'admin_notices', __NAMESPACE__ . '\\fundraisehub_elementor_missing_core_notice' );
@@ -46,12 +53,6 @@ function fundraisehub_elementor_init(): void {
 		add_action( 'admin_notices', __NAMESPACE__ . '\\fundraisehub_elementor_missing_elementor_notice' );
 		return;
 	}
-
-	load_plugin_textdomain(
-		'fundraisehub-elementor',
-		false,
-		dirname( plugin_basename( __FILE__ ) ) . '/languages'
-	);
 
 	// Load the manager class.
 	$manager_file = FUNDRAISEHUB_ELEMENTOR_DIR . 'includes/class-elementor-manager.php';

@@ -8,8 +8,7 @@
     "start": "wp-scripts start",
     "lint:js": "wp-scripts lint-js",
     "lint:css": "wp-scripts lint-style",
-    "packages-update": "wp-scripts packages-update",
-    "plugin-zip": "wp-scripts plugin-zip"
+    "packages-update": "wp-scripts packages-update"
   },
   "devDependencies": {
     "@wordpress/scripts": "^30.0.0"
