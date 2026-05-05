@@ -1,7 +1,6 @@
 name: "Copilot Setup Steps"
 
-# Run automatically when this file changes (validates it works), and allow
-# manual runs from the Actions tab.
+# Run automatically when this file changes, and allow manual runs from the Actions tab.
 on:
   workflow_dispatch:
   push:
@@ -12,7 +11,7 @@ on:
       - .github/workflows/copilot-setup-steps.yml
 
 jobs:
-  # The job MUST be named `copilot-setup-steps` for Copilot to pick it up.
+  # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
   copilot-setup-steps:
     runs-on: ubuntu-latest
 
@@ -23,25 +22,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up PHP
+      # -----------------------------------------------------------------------
+      # PHP
+      # -----------------------------------------------------------------------
+      - name: Set up PHP 8.3
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
           tools: composer:v2
+          extensions: json, mbstring, xml
           coverage: none
 
-      # Install PHP dev dependencies (phpcs, phpunit, wpcs, etc.) before the
-      # firewall is enabled so that Composer can reach github.com/packagist.org.
-      - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
+      # -----------------------------------------------------------------------
+      # Node.js / JavaScript block assets
+      # -----------------------------------------------------------------------
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
 
-      # Install JS dependencies (webpack, @wordpress/scripts, etc.) before the
-      # firewall is enabled so that npm can reach the registry.
-      - name: Install npm dependencies
+      - name: Install JavaScript dependencies
         run: npm ci
