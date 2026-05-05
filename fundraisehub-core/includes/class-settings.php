@@ -316,10 +316,6 @@ class Settings {
 			$value = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
 		}
 
-		if ( '' === $value ) {
-			$value = 'https://app.fundraisehub.com';
-		}
-
 		echo '<input type="url" id="fundraisehub_api_url" name="fundraisehub_api_url" value="' . esc_attr( $value ) . '" class="regular-text" placeholder="https://app.fundraisehub.com" />';
 		echo '<p class="description">' . esc_html__( 'The base URL of your FundRaiseHub installation.', 'fundraisehub-core' ) . '</p>';
 	}
@@ -371,10 +367,6 @@ class Settings {
 		// Backward-compat: fall back to legacy option key.
 		if ( '' === $api_url ) {
 			$api_url = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
-		}
-
-		if ( '' === $api_url ) {
-			$api_url = 'https://app.fundraisehub.com';
 		}
 
 		if ( '' === $api_key ) {

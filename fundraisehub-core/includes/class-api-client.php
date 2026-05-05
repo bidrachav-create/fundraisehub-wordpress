@@ -66,11 +66,6 @@ class ApiClient {
 			if ( '' === $resolved_url ) {
 				$resolved_url = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
 			}
-
-			// Ensure we always have *some* base URL.
-			if ( '' === $resolved_url ) {
-				$resolved_url = 'https://app.fundraisehub.com';
-			}
 		}
 
 		$this->base_url = rtrim( $resolved_url, '/' );
@@ -90,7 +85,7 @@ class ApiClient {
 	 */
 	public function get( string $endpoint, array $params = array() ): array|\WP_Error {
 		// Build a safe, fixed-length transient key.
-		// Hashing both endpoint and params avoids issues with '/' chars in endpoint
+		// Hashing both endpoint and params avoids issues with '/' characters in endpoint
 		// paths being altered/truncated by WordPress's transient key sanitisation, and
 		// keeps the total key length well within the 172-character options-table limit.
 		// The cache version prefix ensures bust_cache() works even when an external
