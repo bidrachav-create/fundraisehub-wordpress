@@ -1,0 +1,23 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "fundraisehub/campaign-banner",
+	"version": "1.0.0",
+	"title": "FundRaiseHub Campaign Banner",
+	"category": "embed",
+	"icon": "format-image",
+	"description": "Renders the campaign banner image.",
+	"textdomain": "fundraisehub-core",
+	"usesContext": [
+		"fundraisehub/campaign-data",
+		"fundraisehub/api-url"
+	],
+	"parent": [ "fundraisehub/campaign-wrapper" ],
+	"supports": {
+		"html": false,
+		"inserter": true
+	},
+	"editorScript": "file:../../assets/blocks/campaign-banner/index.js",
+	"viewScript": "file:../../assets/blocks/campaign-banner/view.js",
+	"render": "file:render.php"
+}

@@ -1,0 +1,23 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "fundraisehub/campaign-description",
+	"version": "1.0.0",
+	"title": "FundRaiseHub Campaign Description",
+	"category": "embed",
+	"icon": "text",
+	"description": "Displays the campaign description.",
+	"textdomain": "fundraisehub-core",
+	"usesContext": [
+		"fundraisehub/campaign-data",
+		"fundraisehub/api-url"
+	],
+	"parent": [ "fundraisehub/campaign-wrapper" ],
+	"supports": {
+		"html": false,
+		"inserter": true
+	},
+	"editorScript": "file:../../assets/blocks/campaign-description/index.js",
+	"viewScript": "file:../../assets/blocks/campaign-description/view.js",
+	"render": "file:render.php"
+}

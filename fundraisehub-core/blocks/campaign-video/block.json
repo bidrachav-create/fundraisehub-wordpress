@@ -1,0 +1,23 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "fundraisehub/campaign-video",
+	"version": "1.0.0",
+	"title": "FundRaiseHub Campaign Video",
+	"category": "embed",
+	"icon": "video-alt3",
+	"description": "Embeds the campaign video.",
+	"textdomain": "fundraisehub-core",
+	"usesContext": [
+		"fundraisehub/campaign-data",
+		"fundraisehub/api-url"
+	],
+	"parent": [ "fundraisehub/campaign-wrapper" ],
+	"supports": {
+		"html": false,
+		"inserter": true
+	},
+	"editorScript": "file:../../assets/blocks/campaign-video/index.js",
+	"viewScript": "file:../../assets/blocks/campaign-video/view.js",
+	"render": "file:render.php"
+}

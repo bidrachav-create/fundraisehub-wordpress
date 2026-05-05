@@ -1,0 +1,23 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "fundraisehub/campaign-teams",
+	"version": "1.0.0",
+	"title": "FundRaiseHub Campaign Teams",
+	"category": "embed",
+	"icon": "groups",
+	"description": "Displays the teams leaderboard.",
+	"textdomain": "fundraisehub-core",
+	"usesContext": [
+		"fundraisehub/campaign-data",
+		"fundraisehub/api-url"
+	],
+	"parent": [ "fundraisehub/campaign-wrapper" ],
+	"supports": {
+		"html": false,
+		"inserter": true
+	},
+	"editorScript": "file:../../assets/blocks/campaign-teams/index.js",
+	"viewScript": "file:../../assets/blocks/campaign-teams/view.js",
+	"render": "file:render.php"
+}
