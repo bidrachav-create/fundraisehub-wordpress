@@ -30,6 +30,9 @@ class CampaignSync {
 	/** Transient key for the full campaign list cache. */
 	private const LIST_TRANSIENT = 'fundraisehub_campaign_list';
 
+	/** Option key that stores the list-cache version integer. */
+	private const LIST_CACHE_VER_OPTION = 'fundraisehub_list_cache_ver';
+
 	/** Default cache lifetime in seconds (1 hour). */
 	private const CACHE_TTL = HOUR_IN_SECONDS;
 
@@ -83,7 +86,10 @@ class CampaignSync {
 		add_action( self::CRON_EVENT, array( $this, 'sync_all' ) );
 		add_action( 'admin_post_' . self::SYNC_ACTION, array( $this, 'handle_admin_sync' ) );
 
-		if ( ! wp_next_scheduled( self::CRON_EVENT ) ) {
+		// Re-schedule if the event does not exist or is on the wrong interval.
+		$current_schedule = wp_get_schedule( self::CRON_EVENT );
+		if ( 'daily' !== $current_schedule ) {
+			wp_clear_scheduled_hook( self::CRON_EVENT );
 			wp_schedule_event( time(), 'daily', self::CRON_EVENT );
 		}
 	}
@@ -138,9 +144,16 @@ class CampaignSync {
 			return $response;
 		}
 
-		set_transient( $transient_key, $response, self::CACHE_TTL );
+		// Normalise: single-campaign endpoint may return { data: {...} } or a plain array.
+		$campaign = $response['data'] ?? $response;
 
-		return $response;
+		if ( ! is_array( $campaign ) ) {
+			$campaign = array();
+		}
+
+		set_transient( $transient_key, $campaign, self::CACHE_TTL );
+
+		return $campaign;
 	}
 
 	/**
@@ -159,8 +172,9 @@ class CampaignSync {
 
 		$args = wp_parse_args( $args, $defaults );
 
-		// Build a unique cache key based on the query parameters.
-		$transient_key = self::LIST_TRANSIENT . '_' . md5( (string) wp_json_encode( $args ) );
+		// Build a unique cache key based on the query parameters and the current list-cache version.
+		$version       = $this->get_list_cache_version();
+		$transient_key = self::LIST_TRANSIENT . '_v' . $version . '_' . md5( (string) wp_json_encode( $args ) );
 		$cached        = get_transient( $transient_key );
 
 		if ( false !== $cached && is_array( $cached ) ) {
@@ -204,8 +218,6 @@ class CampaignSync {
 	 * Intended to be called by WP-Cron or the manual admin-post action.
 	 */
 	public function sync_all(): void {
-		global $wpdb;
-
 		$page        = 1;
 		$total_pages = 1;
 
@@ -248,18 +260,12 @@ class CampaignSync {
 			++$page;
 		} while ( $page <= $total_pages );
 
-		// Delete every hashed list transient (both value and timeout rows).
-		$like_value   = $wpdb->esc_like( '_transient_' . self::LIST_TRANSIENT . '_' ) . '%';
-		$like_timeout = $wpdb->esc_like( '_transient_timeout_' . self::LIST_TRANSIENT . '_' ) . '%';
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->query(
-			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-				$like_value,
-				$like_timeout
-			)
-		);
+		// Invalidate all list-query transients by bumping the version counter.
+		// This works whether or not an external object cache is in use: the old
+		// transient keys become unreachable because the version has changed, and
+		// they expire naturally via their TTL.
+		$new_version = $this->get_list_cache_version() + 1;
+		update_option( self::LIST_CACHE_VER_OPTION, $new_version, false );
 	}
 
 	/**
@@ -390,5 +396,18 @@ class CampaignSync {
 		update_post_meta( $post_id, self::META_API_URL, $api_url );
 
 		return $post_id;
+	}
+
+	/**
+	 * Return the current list-cache version from wp_options.
+	 *
+	 * Incrementing this value (done by sync_all()) effectively invalidates all
+	 * existing list transients without requiring individual key enumeration, and
+	 * works correctly whether or not an external object cache is in use.
+	 *
+	 * @return int
+	 */
+	private function get_list_cache_version(): int {
+		return (int) get_option( self::LIST_CACHE_VER_OPTION, 1 );
 	}
 }

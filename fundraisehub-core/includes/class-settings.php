@@ -42,6 +42,25 @@ class Settings {
 		// Dismiss the setup flag after settings are saved (nonce already verified by options.php).
 		add_action( 'update_option_fundraisehub_api_key', array( $this, 'dismiss_setup_flag' ) );
 		add_action( 'update_option_fundraisehub_api_url', array( $this, 'dismiss_setup_flag' ) );
+
+		// Flush rewrite rules when the campaign archive slug is changed so the
+		// new URL takes effect without requiring a manual permalink re-save.
+		add_action( 'update_option_fundraisehub_campaign_slug', array( $this, 'flush_rewrite_on_slug_change' ), 10, 2 );
+	}
+
+	/**
+	 * Flush rewrite rules when the campaign archive slug option changes.
+	 *
+	 * Called by `update_option_fundraisehub_campaign_slug` which fires only
+	 * after WordPress has already verified the nonce via options.php.
+	 *
+	 * @param mixed $old_value Previous option value.
+	 * @param mixed $new_value New option value.
+	 */
+	public function flush_rewrite_on_slug_change( mixed $old_value, mixed $new_value ): void {
+		if ( $old_value !== $new_value ) {
+			flush_rewrite_rules();
+		}
 	}
 
 	/**
