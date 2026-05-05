@@ -8,10 +8,9 @@ document.querySelectorAll( '.fundraisehub-campaign-honor-scroll__list' ).forEach
 		return;
 	}
 
-	let scrollOffset         = 0;
-	const speed              = 0.5; // pixels per frame
-	const itemHeight         = list.firstElementChild?.offsetHeight ?? 40;
-	const totalScrollHeight  = list.scrollHeight;
+	let scrollOffset        = 0;
+	const speed             = 0.5; // pixels per frame
+	const totalScrollHeight = list.scrollHeight;
 
 	function tick() {
 		scrollOffset += speed;

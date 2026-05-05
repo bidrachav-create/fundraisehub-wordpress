@@ -10,7 +10,7 @@ export default function Edit() {
 	return (
 		<div { ...blockProps }>
 			<Placeholder
-				icon={ apiKeyConfigured ? 'performance' : lock }
+				icon={ apiKeyConfigured ? 'performance' : 'lock' }
 				label={ __( 'Campaign Thermometer', 'fundraisehub-core' ) }
 				instructions={
 					apiKeyConfigured

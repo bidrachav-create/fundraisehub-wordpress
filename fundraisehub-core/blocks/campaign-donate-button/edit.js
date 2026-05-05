@@ -10,7 +10,7 @@ export default function Edit() {
 	return (
 		<div { ...blockProps }>
 			<Placeholder
-				icon={ apiKeyConfigured ? 'heart' : lock }
+				icon={ apiKeyConfigured ? 'heart' : 'lock' }
 				label={ __( 'Campaign Donate Button', 'fundraisehub-core' ) }
 				instructions={
 					apiKeyConfigured

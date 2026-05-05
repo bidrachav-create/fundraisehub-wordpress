@@ -10,7 +10,7 @@ export default function Edit() {
 	return (
 		<div { ...blockProps }>
 			<Placeholder
-				icon={ apiKeyConfigured ? 'chart-bar' : lock }
+				icon={ apiKeyConfigured ? 'chart-bar' : 'lock' }
 				label={ __( 'Campaign Stats Bar', 'fundraisehub-core' ) }
 				instructions={
 					apiKeyConfigured

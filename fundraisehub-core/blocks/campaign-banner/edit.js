@@ -10,7 +10,7 @@ export default function Edit() {
 	return (
 		<div { ...blockProps }>
 			<Placeholder
-				icon={ apiKeyConfigured ? 'format-image' : lock }
+				icon={ apiKeyConfigured ? 'format-image' : 'lock' }
 				label={ __( 'Campaign Banner', 'fundraisehub-core' ) }
 				instructions={
 					apiKeyConfigured

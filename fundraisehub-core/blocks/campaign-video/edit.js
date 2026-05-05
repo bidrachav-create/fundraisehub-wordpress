@@ -10,7 +10,7 @@ export default function Edit() {
 	return (
 		<div { ...blockProps }>
 			<Placeholder
-				icon={ apiKeyConfigured ? 'video-alt3' : lock }
+				icon={ apiKeyConfigured ? 'video-alt3' : 'lock' }
 				label={ __( 'Campaign Video', 'fundraisehub-core' ) }
 				instructions={
 					apiKeyConfigured

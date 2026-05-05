@@ -10,7 +10,7 @@ export default function Edit() {
 	return (
 		<div { ...blockProps }>
 			<Placeholder
-				icon={ apiKeyConfigured ? 'groups' : lock }
+				icon={ apiKeyConfigured ? 'groups' : 'lock' }
 				label={ __( 'Campaign Teams', 'fundraisehub-core' ) }
 				instructions={
 					apiKeyConfigured

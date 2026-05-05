@@ -10,7 +10,7 @@ export default function Edit() {
 	return (
 		<div { ...blockProps }>
 			<Placeholder
-				icon={ apiKeyConfigured ? 'grid-view' : lock }
+				icon={ apiKeyConfigured ? 'grid-view' : 'lock' }
 				label={ __( 'Campaign Donation Tiles', 'fundraisehub-core' ) }
 				instructions={
 					apiKeyConfigured
