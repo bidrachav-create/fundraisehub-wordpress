@@ -129,9 +129,9 @@ class ShortcodeRegistry {
 		$url         = esc_url( $campaign['url'] ?? '' );
 		$class_attr  = esc_attr( 'fundraisehub-campaign-card ' . $class );
 		?>
-		<div class="<?php echo $class_attr; ?>">
-			<h3 class="fundraisehub-campaign-title"><?php echo $title; ?></h3>
-			<div class="fundraisehub-campaign-description"><?php echo $description; ?></div>
+		<div class="<?php echo esc_attr( $class_attr ); ?>">
+			<h3 class="fundraisehub-campaign-title"><?php echo esc_html( $title ); ?></h3>
+			<div class="fundraisehub-campaign-description"><?php echo wp_kses_post( $description ); ?></div>
 			<?php if ( $goal > 0 ) : ?>
 				<div class="fundraisehub-campaign-progress">
 					<progress value="<?php echo esc_attr( (string) $raised ); ?>" max="<?php echo esc_attr( (string) $goal ); ?>"></progress>
@@ -150,7 +150,7 @@ class ShortcodeRegistry {
 				</div>
 			<?php endif; ?>
 			<?php if ( $url ) : ?>
-				<a href="<?php echo $url; ?>" class="fundraisehub-campaign-link">
+				<a href="<?php echo esc_url( $url ); ?>" class="fundraisehub-campaign-link">
 					<?php esc_html_e( 'Donate Now', 'fundraisehub-core' ); ?>
 				</a>
 			<?php endif; ?>

@@ -34,6 +34,19 @@ class Settings {
 		add_action( 'admin_menu', [ $this, 'add_settings_page' ] );
 		add_action( 'admin_init', [ $this, 'register_settings' ] );
 		add_action( 'admin_notices', [ $this, 'maybe_show_setup_notice' ] );
+		// Dismiss the setup flag after settings are saved (nonce already verified by options.php).
+		add_action( 'update_option_fundraisehub_api_key', [ $this, 'dismiss_setup_flag' ] );
+		add_action( 'update_option_fundraisehub_site_url', [ $this, 'dismiss_setup_flag' ] );
+	}
+
+	/**
+	 * Delete the "needs-setup" flag once the user has saved their settings.
+	 *
+	 * Called by `update_option_*` hooks which fire only after WordPress has
+	 * already verified nonces via options.php.
+	 */
+	public function dismiss_setup_flag(): void {
+		delete_option( 'fundraisehub_needs_setup' );
 	}
 
 	/**
@@ -126,11 +139,6 @@ class Settings {
 			</p>
 		</div>
 		<?php
-
-		// Dismiss the flag once the user has visited the settings page.
-		if ( isset( $_GET['page'] ) && $_GET['page'] === self::PAGE_SLUG ) { // phpcs:ignore WordPress.Security.NonceVerification
-			delete_option( 'fundraisehub_needs_setup' );
-		}
 	}
 
 	// -------------------------------------------------------------------------

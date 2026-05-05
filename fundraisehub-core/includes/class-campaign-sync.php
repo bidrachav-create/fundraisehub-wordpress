@@ -99,7 +99,7 @@ class CampaignSync {
 		$args = wp_parse_args( $args, $defaults );
 
 		// Build a unique cache key based on the query parameters.
-		$transient_key = self::LIST_TRANSIENT . '_' . md5( serialize( $args ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+		$transient_key = self::LIST_TRANSIENT . '_' . md5( (string) wp_json_encode( $args ) );
 		$cached        = get_transient( $transient_key );
 
 		if ( $cached !== false && is_array( $cached ) ) {
