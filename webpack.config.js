@@ -7,13 +7,22 @@ const defaultConfig = require( '@wordpress/scripts/config/webpack.config' );
 const path = require( 'path' );
 
 const blocksDir = path.resolve( __dirname, 'fundraisehub-core/blocks' );
+const jsDir = path.resolve( __dirname, 'fundraisehub-core/js' );
 
 const blockEntry = ( slug, hasView = true ) => {
 	const entries = {
-		[ `blocks/${ slug }/index` ]: path.resolve( blocksDir, slug, 'index.js' ),
+		[ `blocks/${ slug }/index` ]: path.resolve(
+			blocksDir,
+			slug,
+			'index.js'
+		),
 	};
 	if ( hasView ) {
-		entries[ `blocks/${ slug }/view` ] = path.resolve( blocksDir, slug, 'view.js' );
+		entries[ `blocks/${ slug }/view` ] = path.resolve(
+			blocksDir,
+			slug,
+			'view.js'
+		);
 	}
 	return entries;
 };
@@ -38,6 +47,9 @@ module.exports = {
 		...blockEntry( 'campaign-donate-button' ),
 		...blockEntry( 'campaign-donation-tiles' ),
 		...blockEntry( 'campaign-honor-scroll' ),
+
+		// Standalone front-end scripts (not blocks).
+		'js/donate-bridge': path.resolve( jsDir, 'donate-bridge.js' ),
 	},
 	output: {
 		...defaultConfig.output,

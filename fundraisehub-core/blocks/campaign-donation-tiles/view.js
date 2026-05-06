@@ -5,62 +5,77 @@
 
 import { __ } from '@wordpress/i18n';
 
-document.querySelectorAll( '.fundraisehub-campaign-donation-tiles' ).forEach( ( wrapper ) => {
-	const tiles = wrapper.querySelectorAll( '.fundraisehub-campaign-donation-tiles__tile' );
+document
+	.querySelectorAll( '.fundraisehub-campaign-donation-tiles' )
+	.forEach( ( wrapper ) => {
+		const tiles = wrapper.querySelectorAll(
+			'.fundraisehub-campaign-donation-tiles__tile'
+		);
 
-	tiles.forEach( ( tile ) => {
-		tile.addEventListener( 'click', () => {
-			tiles.forEach( ( t ) => t.classList.remove( 'is-selected' ) );
-			tile.classList.add( 'is-selected' );
+		tiles.forEach( ( tile ) => {
+			tile.addEventListener( 'click', () => {
+				tiles.forEach( ( t ) => t.classList.remove( 'is-selected' ) );
+				tile.classList.add( 'is-selected' );
 
-			const amount       = tile.dataset.amount ?? '';
-			const apiUrl       = wrapper.dataset.apiUrl ?? '';
-			const campaignSlug = wrapper.dataset.campaignSlug ?? '';
-			const orgSlug      = wrapper.dataset.orgSlug ?? '';
+				const amount = tile.dataset.amount ?? '';
 
-			if ( ! apiUrl ) {
-				return;
-			}
+				// Use the pre-rendered hidden iframe as a template so the URL,
+				// sandbox, and allow attributes are always sourced from render.php.
+				const template = wrapper.querySelector(
+					'iframe.fundraisehub-donate-iframe'
+				);
+				if ( ! template ) {
+					return;
+				}
 
-			const params   = new URLSearchParams( { amount } );
-			const donateUrl =
-				apiUrl.replace( /\/$/, '' ) +
-				'/donate/' +
-				orgSlug +
-				'/' +
-				campaignSlug +
-				'?' +
-				params.toString();
+				const iframe = /** @type {HTMLIFrameElement} */ (
+					template.cloneNode( true )
+				);
+				iframe.removeAttribute( 'hidden' );
 
-			openDonationOverlay( donateUrl, tile );
+				// Append the selected amount to the existing iframe src.
+				if ( amount ) {
+					try {
+						const url = new URL( iframe.src );
+						url.searchParams.set( 'amount', amount );
+						iframe.src = url.toString();
+					} catch ( e ) {
+						// Leave the src unchanged if the URL is invalid.
+					}
+				}
+
+				openDonationOverlay( iframe, tile );
+			} );
 		} );
 	} );
-} );
 
 /**
  * Create and open a full-screen iframe overlay for the donation form.
  * Traps keyboard focus inside the overlay and restores it on close.
  *
- * @param {string}      url     Donation form URL.
- * @param {HTMLElement} trigger Element that triggered the overlay (focus is restored here on close).
+ * @param {HTMLIFrameElement} iframe  Configured iframe element to embed.
+ * @param {HTMLElement}       trigger Element that triggered the overlay (focus is restored here on close).
  */
-function openDonationOverlay( url, trigger ) {
+function openDonationOverlay( iframe, trigger ) {
 	const overlay = document.createElement( 'div' );
 	overlay.className = 'fundraisehub-donation-overlay';
 	overlay.setAttribute( 'role', 'dialog' );
 	overlay.setAttribute( 'aria-modal', 'true' );
-	overlay.setAttribute( 'aria-label', __( 'Donation form', 'fundraisehub-core' ) );
+	overlay.setAttribute(
+		'aria-label',
+		__( 'Donation form', 'fundraisehub-core' )
+	);
 
 	const closeBtn = document.createElement( 'button' );
 	closeBtn.className = 'fundraisehub-donation-overlay__close';
-	closeBtn.setAttribute( 'aria-label', __( 'Close donation form', 'fundraisehub-core' ) );
+	closeBtn.setAttribute(
+		'aria-label',
+		__( 'Close donation form', 'fundraisehub-core' )
+	);
 	closeBtn.textContent = '×';
 
-	const iframe = document.createElement( 'iframe' );
-	iframe.src = url;
-	iframe.className = 'fundraisehub-donation-overlay__iframe';
+	iframe.classList.add( 'fundraisehub-donation-overlay__iframe' );
 	iframe.setAttribute( 'title', __( 'Donation form', 'fundraisehub-core' ) );
-	iframe.setAttribute( 'allowpaymentrequest', '' );
 
 	overlay.appendChild( closeBtn );
 	overlay.appendChild( iframe );
@@ -99,7 +114,7 @@ function openDonationOverlay( url, trigger ) {
 
 		if ( 'Tab' === e.key ) {
 			const first = focusableElements[ 0 ];
-			const last  = focusableElements[ focusableElements.length - 1 ];
+			const last = focusableElements[ focusableElements.length - 1 ];
 
 			if ( e.shiftKey && document.activeElement === first ) {
 				e.preventDefault();

@@ -21,8 +21,7 @@ export default function Edit() {
 		className: 'fundraisehub-campaign-wrapper',
 	} );
 
-	const apiKeyConfigured =
-		window.fundraisehubData?.apiKeyConfigured ?? false;
+	const apiKeyConfigured = window.fundraisehubData?.apiKeyConfigured ?? false;
 
 	if ( ! apiKeyConfigured ) {
 		return (

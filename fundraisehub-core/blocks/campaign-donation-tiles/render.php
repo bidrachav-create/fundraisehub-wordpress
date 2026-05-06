@@ -41,15 +41,28 @@ if ( empty( $amounts ) ) {
 	return;
 }
 
-$campaign_slug = esc_attr( (string) ( $campaign_data['slug'] ?? $campaign_data['campaign_slug'] ?? '' ) );
-$org_slug      = esc_attr( (string) ( $campaign_data['org_slug'] ?? $campaign_data['organisation_slug'] ?? '' ) );
+$campaign_id     = (string) ( $campaign_data['id'] ?? '' );
+$color_primary   = ltrim( (string) ( $campaign_data['colorPrimary'] ?? $campaign_data['color_primary'] ?? $layout['colorPrimary'] ?? '' ), '#' );
+$color_secondary = ltrim( (string) ( $campaign_data['colorSecondary'] ?? $campaign_data['color_secondary'] ?? $layout['colorSecondary'] ?? '' ), '#' );
+
+// Build the iframe embed URL.
+$iframe_src = '';
+if ( $api_url && $campaign_id ) {
+	$iframe_src = add_query_arg(
+		array_filter(
+			array(
+				'color'     => $color_primary,
+				'secondary' => $color_secondary,
+				'origin'    => home_url(),
+			)
+		),
+		rtrim( $api_url, '/' ) . '/embed/campaign/' . rawurlencode( $campaign_id )
+	);
+}
 
 ?>
 <div
 	<?php echo get_block_wrapper_attributes( array( 'class' => 'fundraisehub-campaign-donation-tiles' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-	data-api-url="<?php echo esc_attr( $api_url ); ?>"
-	data-campaign-slug="<?php echo esc_attr( $campaign_slug ); ?>"
-	data-org-slug="<?php echo esc_attr( $org_slug ); ?>"
 >
 	<?php foreach ( $amounts as $amount ) : ?>
 		<button
@@ -60,4 +73,14 @@ $org_slug      = esc_attr( (string) ( $campaign_data['org_slug'] ?? $campaign_da
 			<?php echo esc_html( '$' . number_format( (float) $amount, 2 ) ); ?>
 		</button>
 	<?php endforeach; ?>
+	<?php if ( $iframe_src ) : ?>
+	<iframe
+		class="fundraisehub-donate-iframe"
+		src="<?php echo esc_url( $iframe_src ); ?>"
+		sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
+		allow="payment"
+		title="<?php esc_attr_e( 'Donation form', 'fundraisehub-core' ); ?>"
+		hidden
+	></iframe>
+	<?php endif; ?>
 </div>
