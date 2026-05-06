@@ -35,4 +35,5 @@ wp-content/
 # yarn.lock
 
 # Zip distributions
+dist/
 *.zip
