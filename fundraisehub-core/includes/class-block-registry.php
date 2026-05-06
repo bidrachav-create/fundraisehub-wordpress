@@ -27,6 +27,7 @@ class BlockRegistry {
 	public function register(): void {
 		add_action( 'init', array( $this, 'register_blocks' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_data' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_donate_bridge' ) );
 		add_filter( 'render_block_context', array( $this, 'provide_campaign_context' ), 10, 3 );
 	}
 
@@ -54,6 +55,42 @@ class BlockRegistry {
 				register_block_type( $block_dir );
 			}
 		}
+	}
+
+	/**
+	 * Enqueue the donate postMessage bridge script on campaign post type pages.
+	 *
+	 * The script is loaded in the footer so it runs after the DOM is ready.
+	 * Localised strings are injected via `window.fundraisehubBridge`.
+	 */
+	public function enqueue_donate_bridge(): void {
+		if ( ! is_singular( CampaignCPT::POST_TYPE ) ) {
+			return;
+		}
+
+		$script_url  = FUNDRAISEHUB_CORE_URL . 'assets/js/donate-bridge.js';
+		$script_path = FUNDRAISEHUB_CORE_DIR . 'assets/js/donate-bridge.js';
+
+		if ( ! file_exists( $script_path ) ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'fundraisehub-donate-bridge',
+			$script_url,
+			array(),
+			FUNDRAISEHUB_CORE_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'fundraisehub-donate-bridge',
+			'fundraisehubBridge',
+			array(
+				'thankYouMessage' => __( 'Thank you for your donation!', 'fundraisehub-core' ),
+				'closeLabel'      => __( 'Close', 'fundraisehub-core' ),
+			)
+		);
 	}
 
 	/**

@@ -1,1 +1,101 @@
-(()=>{"use strict";const e=window.wp.i18n;document.querySelectorAll(".fundraisehub-campaign-donation-tiles").forEach(t=>{const n=t.querySelectorAll(".fundraisehub-campaign-donation-tiles__tile");n.forEach(a=>{a.addEventListener("click",()=>{n.forEach(e=>e.classList.remove("is-selected")),a.classList.add("is-selected");const o=a.dataset.amount??"",s=t.dataset.apiUrl??"",i=t.dataset.campaignSlug??"",c=t.dataset.orgSlug??"";if(!s)return;const r=new URLSearchParams({amount:o});!function(t,n){const a=document.createElement("div");a.className="fundraisehub-donation-overlay",a.setAttribute("role","dialog"),a.setAttribute("aria-modal","true"),a.setAttribute("aria-label",(0,e.__)("Donation form","fundraisehub-core"));const o=document.createElement("button");o.className="fundraisehub-donation-overlay__close",o.setAttribute("aria-label",(0,e.__)("Close donation form","fundraisehub-core")),o.textContent="×";const s=document.createElement("iframe");function i(){a.remove(),document.removeEventListener("focusin",r),n&&n.focus()}s.src=t,s.className="fundraisehub-donation-overlay__iframe",s.setAttribute("title",(0,e.__)("Donation form","fundraisehub-core")),s.setAttribute("allowpaymentrequest",""),a.appendChild(o),a.appendChild(s),document.body.appendChild(a),o.addEventListener("click",i),o.focus();const c=[o,s];function r(e){a.contains(e.target)||o.focus()}document.addEventListener("focusin",r),a.addEventListener("keydown",e=>{if("Escape"!==e.key){if("Tab"===e.key){const t=c[0],n=c[c.length-1];e.shiftKey&&document.activeElement===t?(e.preventDefault(),n.focus()):e.shiftKey||document.activeElement!==n||(e.preventDefault(),t.focus())}}else i()})}(s.replace(/\/$/,"")+"/donate/"+c+"/"+i+"?"+r.toString(),a)})})})})();
+( () => {
+	'use strict';
+	const e = window.wp.i18n;
+	document
+		.querySelectorAll( '.fundraisehub-campaign-donation-tiles' )
+		.forEach( ( t ) => {
+			const n = t.querySelectorAll(
+				'.fundraisehub-campaign-donation-tiles__tile'
+			);
+			n.forEach( ( a ) => {
+				a.addEventListener( 'click', () => {
+					n.forEach( ( e ) => e.classList.remove( 'is-selected' ) ),
+						a.classList.add( 'is-selected' );
+					const o = a.dataset.amount ?? '',
+						s = t.dataset.apiUrl ?? '',
+						i = t.dataset.campaignSlug ?? '',
+						c = t.dataset.orgSlug ?? '';
+					if ( ! s ) {
+						return;
+					}
+					const r = new URLSearchParams( { amount: o } );
+					! ( function ( t, n ) {
+						const a = document.createElement( 'div' );
+						( a.className = 'fundraisehub-donation-overlay' ),
+							a.setAttribute( 'role', 'dialog' ),
+							a.setAttribute( 'aria-modal', 'true' ),
+							a.setAttribute(
+								'aria-label',
+								( 0, e.__ )(
+									'Donation form',
+									'fundraisehub-core'
+								)
+							);
+						const o = document.createElement( 'button' );
+						( o.className =
+							'fundraisehub-donation-overlay__close' ),
+							o.setAttribute(
+								'aria-label',
+								( 0, e.__ )(
+									'Close donation form',
+									'fundraisehub-core'
+								)
+							),
+							( o.textContent = '×' );
+						const s = document.createElement( 'iframe' );
+						function i() {
+							a.remove(),
+								document.removeEventListener( 'focusin', r ),
+								n && n.focus();
+						}
+						( s.src = t ),
+							( s.className =
+								'fundraisehub-donation-overlay__iframe' ),
+							s.setAttribute(
+								'title',
+								( 0, e.__ )(
+									'Donation form',
+									'fundraisehub-core'
+								)
+							),
+							s.setAttribute( 'allowpaymentrequest', '' ),
+							a.appendChild( o ),
+							a.appendChild( s ),
+							document.body.appendChild( a ),
+							o.addEventListener( 'click', i ),
+							o.focus();
+						const c = [ o, s ];
+						function r( e ) {
+							a.contains( e.target ) || o.focus();
+						}
+						document.addEventListener( 'focusin', r ),
+							a.addEventListener( 'keydown', ( e ) => {
+								if ( 'Escape' !== e.key ) {
+									if ( 'Tab' === e.key ) {
+										const t = c[ 0 ],
+											n = c[ c.length - 1 ];
+										e.shiftKey &&
+										document.activeElement === t
+											? ( e.preventDefault(), n.focus() )
+											: e.shiftKey ||
+											  document.activeElement !== n ||
+											  ( e.preventDefault(), t.focus() );
+									}
+								} else {
+									i();
+								}
+							} );
+					} )(
+						s.replace( /\/$/, '' ) +
+							'/donate/' +
+							c +
+							'/' +
+							i +
+							'?' +
+							r.toString(),
+						a
+					);
+				} );
+			} );
+		} );
+} )();

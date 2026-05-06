@@ -4,8 +4,7 @@ import { Placeholder } from '@wordpress/components';
 
 export default function Edit() {
 	const blockProps = useBlockProps();
-	const apiKeyConfigured =
-		window.fundraisehubData?.apiKeyConfigured ?? false;
+	const apiKeyConfigured = window.fundraisehubData?.apiKeyConfigured ?? false;
 
 	return (
 		<div { ...blockProps }>

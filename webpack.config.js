@@ -10,10 +10,18 @@ const blocksDir = path.resolve( __dirname, 'fundraisehub-core/blocks' );
 
 const blockEntry = ( slug, hasView = true ) => {
 	const entries = {
-		[ `blocks/${ slug }/index` ]: path.resolve( blocksDir, slug, 'index.js' ),
+		[ `blocks/${ slug }/index` ]: path.resolve(
+			blocksDir,
+			slug,
+			'index.js'
+		),
 	};
 	if ( hasView ) {
-		entries[ `blocks/${ slug }/view` ] = path.resolve( blocksDir, slug, 'view.js' );
+		entries[ `blocks/${ slug }/view` ] = path.resolve(
+			blocksDir,
+			slug,
+			'view.js'
+		);
 	}
 	return entries;
 };
