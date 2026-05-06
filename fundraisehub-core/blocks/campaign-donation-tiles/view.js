@@ -74,8 +74,7 @@ function openDonationOverlay( iframe, trigger ) {
 	);
 	closeBtn.textContent = '×';
 
-	iframe.className =
-		'fundraisehub-donate-iframe fundraisehub-donation-overlay__iframe';
+	iframe.classList.add( 'fundraisehub-donation-overlay__iframe' );
 	iframe.setAttribute( 'title', __( 'Donation form', 'fundraisehub-core' ) );
 
 	overlay.appendChild( closeBtn );

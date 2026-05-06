@@ -18,10 +18,9 @@
 	'use strict';
 
 	/**
-	 * Localised strings and configuration injected via wp_localize_script.
-	 * Provides i18n strings and the allowedOrigin for postMessage targeting.
+	 * Localised strings injected via wp_localize_script.
 	 *
-	 * @type {{ thankYouMessage: string, closeLabel: string, allowedOrigin: string }}
+	 * @type {{ thankYouMessage: string, closeLabel: string }}
 	 */
 	const cfg = window.fundraisehubBridge || {};
 
