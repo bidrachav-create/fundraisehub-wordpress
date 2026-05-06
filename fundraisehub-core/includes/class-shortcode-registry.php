@@ -126,8 +126,8 @@ class ShortcodeRegistry {
 		$description = (string) ( $campaign['description'] ?? '' );
 		$goal        = isset( $campaign['goal'] ) ? (float) $campaign['goal'] : 0.0;
 		$raised      = isset( $campaign['raised'] ) ? (float) $campaign['raised'] : 0.0;
-		$url         = esc_url( $campaign['url'] ?? '' );
-		$class_attr  = esc_attr( 'fundraisehub-campaign-card ' . $class );
+		$url         = (string) ( $campaign['url'] ?? '' );
+		$class_attr  = 'fundraisehub-campaign-card ' . $class;
 		?>
 		<div class="<?php echo esc_attr( $class_attr ); ?>">
 			<h3 class="fundraisehub-campaign-title"><?php echo esc_html( $title ); ?></h3>
