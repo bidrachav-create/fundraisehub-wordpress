@@ -241,7 +241,6 @@ abstract class CampaignWidgetBase extends \Elementor\Widget_Base {
 	 * @return string Sanitized plain-text post title or "(no title)".
 	 */
 	private static function format_campaign_title( \WP_Post $post ): string {
-		$title = '' !== $post->post_title ? $post->post_title : __( '(no title)', 'fundraisehub-elementor' );
-		return sanitize_text_field( $title );
+		return sanitize_text_field( '' !== $post->post_title ? $post->post_title : __( '(no title)', 'fundraisehub-elementor' ) );
 	}
 }
