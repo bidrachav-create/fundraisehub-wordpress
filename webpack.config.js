@@ -24,17 +24,20 @@ module.exports = {
 		// campaign-wrapper has no separate front-end view script.
 		...blockEntry( 'campaign-wrapper', false ),
 
-		...blockEntry( 'campaign-banner' ),
-		...blockEntry( 'campaign-stats-bar' ),
-		...blockEntry( 'campaign-thermometer' ),
-		...blockEntry( 'campaign-description' ),
+		// Blocks with stub-only view.js – no front-end bundle needed.
+		...blockEntry( 'campaign-banner', false ),
+		...blockEntry( 'campaign-stats-bar', false ),
+		...blockEntry( 'campaign-thermometer', false ),
+		...blockEntry( 'campaign-description', false ),
+		...blockEntry( 'campaign-teams', false ),
+		...blockEntry( 'campaign-video', false ),
+		...blockEntry( 'campaign-photo-gallery', false ),
+		...blockEntry( 'campaign-comments', false ),
+
+		// Blocks with real front-end JavaScript.
 		...blockEntry( 'campaign-donate-button' ),
 		...blockEntry( 'campaign-donation-tiles' ),
 		...blockEntry( 'campaign-honor-scroll' ),
-		...blockEntry( 'campaign-teams' ),
-		...blockEntry( 'campaign-video' ),
-		...blockEntry( 'campaign-photo-gallery' ),
-		...blockEntry( 'campaign-comments' ),
 	},
 	output: {
 		...defaultConfig.output,

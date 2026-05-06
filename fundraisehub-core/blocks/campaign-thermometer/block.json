@@ -18,6 +18,5 @@
 		"inserter": true
 	},
 	"editorScript": "file:../../assets/blocks/campaign-thermometer/index.js",
-	"viewScript": "file:../../assets/blocks/campaign-thermometer/view.js",
 	"render": "file:render.php"
 }

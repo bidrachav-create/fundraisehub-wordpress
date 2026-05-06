@@ -18,6 +18,5 @@
 		"inserter": true
 	},
 	"editorScript": "file:../../assets/blocks/campaign-video/index.js",
-	"viewScript": "file:../../assets/blocks/campaign-video/view.js",
 	"render": "file:render.php"
 }

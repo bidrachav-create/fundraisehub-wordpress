@@ -18,6 +18,5 @@
 		"inserter": true
 	},
 	"editorScript": "file:../../assets/blocks/campaign-teams/index.js",
-	"viewScript": "file:../../assets/blocks/campaign-teams/view.js",
 	"render": "file:render.php"
 }

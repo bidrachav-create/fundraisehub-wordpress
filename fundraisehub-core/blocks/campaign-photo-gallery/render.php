@@ -45,8 +45,13 @@ if ( empty( $images ) ) {
 	<ul class="fundraisehub-campaign-photo-gallery__grid">
 		<?php
 		foreach ( $images as $image ) :
-			$src = esc_url( (string) ( $image['url'] ?? $image['src'] ?? $image ) );
-			$alt = esc_attr( (string) ( $image['alt'] ?? $image['caption'] ?? '' ) );
+			if ( is_string( $image ) ) {
+				$src = esc_url( $image );
+				$alt = '';
+			} else {
+				$src = esc_url( (string) ( $image['url'] ?? $image['src'] ?? '' ) );
+				$alt = esc_attr( (string) ( $image['alt'] ?? $image['caption'] ?? '' ) );
+			}
 			?>
 			<?php if ( $src ) : ?>
 				<li class="fundraisehub-campaign-photo-gallery__item">
