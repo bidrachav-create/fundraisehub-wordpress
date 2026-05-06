@@ -105,9 +105,14 @@ class BlockRegistry {
 	 * whether the API key has been configured without making REST requests.
 	 */
 	public function enqueue_editor_data(): void {
+		$api_url = (string) get_option( 'fundraisehub_api_url', '' );
+		if ( '' === $api_url ) {
+			$api_url = (string) get_option( 'fundraisehub_site_url', '' );
+		}
+
 		$data = array(
 			'apiKeyConfigured' => ! empty( get_option( 'fundraisehub_api_key' ) ),
-			'siteUrl'          => esc_url_raw( (string) get_option( 'fundraisehub_site_url', '' ) ),
+			'siteUrl'          => esc_url_raw( $api_url ),
 		);
 
 		wp_add_inline_script(

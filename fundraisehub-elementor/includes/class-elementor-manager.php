@@ -105,6 +105,12 @@ class ElementorManager {
 			wp_send_json_error( array( 'message' => esc_html__( 'Permission denied.', 'fundraisehub-elementor' ) ) );
 		}
 
+		// Ensure the base class is loaded in AJAX context (it may not yet have been
+		// loaded by register_widgets() if the Elementor widget-register hook has not
+		// fired on this request). This is a no-op when Composer autoloading is active,
+		// because require_once skips files that are already included.
+		require_once FUNDRAISEHUB_ELEMENTOR_DIR . 'includes/class-campaign-widget-base.php';
+
 		$posts = get_posts(
 			array(
 				'post_type'      => CampaignCPT::POST_TYPE,
@@ -119,7 +125,7 @@ class ElementorManager {
 		foreach ( $posts as $post ) {
 			$options[] = array(
 				'id'   => $post->ID,
-				'text' => self::format_campaign_title( $post ),
+				'text' => CampaignWidgetBase::format_campaign_title( $post ),
 			);
 		}
 
@@ -232,16 +238,5 @@ class ElementorManager {
 	 */
 	private function slug_to_class_name( string $slug ): string {
 		return str_replace( ' ', '', ucwords( str_replace( '-', ' ', $slug ) ) );
-	}
-
-	/**
-	 * Return a campaign post's display title, falling back to a translated placeholder.
-	 *
-	 * @param \WP_Post $post Campaign post object.
-	 *
-	 * @return string Sanitized plain-text post title or "(no title)".
-	 */
-	private static function format_campaign_title( \WP_Post $post ): string {
-		return sanitize_text_field( '' !== $post->post_title ? $post->post_title : __( '(no title)', 'fundraisehub-elementor' ) );
 	}
 }
