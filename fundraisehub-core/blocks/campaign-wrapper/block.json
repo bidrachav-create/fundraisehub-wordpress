@@ -1,0 +1,31 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "fundraisehub/campaign-wrapper",
+	"version": "1.0.0",
+	"title": "FundRaiseHub Campaign",
+	"category": "embed",
+	"icon": "heart",
+	"description": "Wraps all FundRaiseHub campaign blocks and provides campaign context from post meta.",
+	"textdomain": "fundraisehub-core",
+	"attributes": {
+		"campaignDataJson": {
+			"type": "string",
+			"default": ""
+		},
+		"apiUrl": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"providesContext": {
+		"fundraisehub/campaign-data": "campaignDataJson",
+		"fundraisehub/api-url": "apiUrl"
+	},
+	"supports": {
+		"html": false,
+		"color": false
+	},
+	"editorScript": "file:../../assets/blocks/campaign-wrapper/index.js",
+	"render": "file:render.php"
+}

@@ -26,6 +26,8 @@ class BlockRegistry {
 	 */
 	public function register(): void {
 		add_action( 'init', array( $this, 'register_blocks' ) );
+		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_data' ) );
+		add_filter( 'render_block_context', array( $this, 'provide_campaign_context' ), 10, 3 );
 	}
 
 	/**
@@ -52,5 +54,55 @@ class BlockRegistry {
 				register_block_type( $block_dir );
 			}
 		}
+	}
+
+	/**
+	 * Inject plugin configuration data for use by block editor scripts.
+	 *
+	 * Sets `window.fundraisehubData` so that edit.js components can check
+	 * whether the API key has been configured without making REST requests.
+	 */
+	public function enqueue_editor_data(): void {
+		$data = array(
+			'apiKeyConfigured' => ! empty( get_option( 'fundraisehub_api_key' ) ),
+			'siteUrl'          => esc_url_raw( (string) get_option( 'fundraisehub_site_url', '' ) ),
+		);
+
+		wp_add_inline_script(
+			'wp-blocks',
+			'window.fundraisehubData = ' . wp_json_encode( $data ) . ';',
+			'before'
+		);
+	}
+
+	/**
+	 * Inject campaign post meta into the block context for all blocks whose
+	 * immediate parent is `fundraisehub/campaign-wrapper`.
+	 *
+	 * This makes `_fundraisehub_campaign_data` and `_fundraisehub_api_url`
+	 * available as `$block->context['fundraisehub/campaign-data']` and
+	 * `$block->context['fundraisehub/api-url']` in child block render.php files.
+	 *
+	 * @param mixed[]        $context      Block context values.
+	 * @param mixed[]        $parsed_block The block being rendered.
+	 * @param \WP_Block|null $parent_block The parent block instance, if any.
+	 *
+	 * @return mixed[] Filtered context array.
+	 */
+	public function provide_campaign_context( array $context, array $parsed_block, ?\WP_Block $parent_block ): array {
+		if ( null === $parent_block || 'fundraisehub/campaign-wrapper' !== $parent_block->name ) {
+			return $context;
+		}
+
+		$post_id = get_the_ID();
+
+		if ( ! $post_id ) {
+			return $context;
+		}
+
+		$context['fundraisehub/campaign-data'] = (string) get_post_meta( $post_id, '_fundraisehub_campaign_data', true );
+		$context['fundraisehub/api-url']       = (string) get_post_meta( $post_id, '_fundraisehub_api_url', true );
+
+		return $context;
 	}
 }

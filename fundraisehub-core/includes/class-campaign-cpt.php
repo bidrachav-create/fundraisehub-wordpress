@@ -70,7 +70,7 @@ class CampaignCPT {
 			'menu_position'      => 20,
 			'menu_icon'          => 'dashicons-heart',
 			'supports'           => array( 'title', 'editor', 'thumbnail', 'custom-fields' ),
-			'show_in_rest'       => false,
+			'show_in_rest'       => true,
 		);
 
 		register_post_type( self::POST_TYPE, $args );

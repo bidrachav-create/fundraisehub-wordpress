@@ -1,0 +1,22 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "fundraisehub/campaign-stats-bar",
+	"version": "1.0.0",
+	"title": "FundRaiseHub Campaign Stats Bar",
+	"category": "embed",
+	"icon": "chart-bar",
+	"description": "Displays raised amount, donor count, and goal.",
+	"textdomain": "fundraisehub-core",
+	"usesContext": [
+		"fundraisehub/campaign-data",
+		"fundraisehub/api-url"
+	],
+	"parent": [ "fundraisehub/campaign-wrapper" ],
+	"supports": {
+		"html": false,
+		"inserter": true
+	},
+	"editorScript": "file:../../assets/blocks/campaign-stats-bar/index.js",
+	"render": "file:render.php"
+}

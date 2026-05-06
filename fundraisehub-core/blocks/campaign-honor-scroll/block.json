@@ -1,0 +1,23 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "fundraisehub/campaign-honor-scroll",
+	"version": "1.0.0",
+	"title": "FundRaiseHub Campaign Honor Scroll",
+	"category": "embed",
+	"icon": "groups",
+	"description": "Displays a live scrolling list of recent donors.",
+	"textdomain": "fundraisehub-core",
+	"usesContext": [
+		"fundraisehub/campaign-data",
+		"fundraisehub/api-url"
+	],
+	"parent": [ "fundraisehub/campaign-wrapper" ],
+	"supports": {
+		"html": false,
+		"inserter": true
+	},
+	"editorScript": "file:../../assets/blocks/campaign-honor-scroll/index.js",
+	"viewScript": "file:../../assets/blocks/campaign-honor-scroll/view.js",
+	"render": "file:render.php"
+}
