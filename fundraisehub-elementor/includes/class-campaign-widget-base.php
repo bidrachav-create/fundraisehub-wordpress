@@ -43,6 +43,43 @@ abstract class CampaignWidgetBase extends \Elementor\Widget_Base {
 		return array( 'fundraisehub' );
 	}
 
+	/**
+	 * Return script handles that must be enqueued when this widget is rendered.
+	 *
+	 * Interactive blocks (donate-button, donation-tiles) need both their
+	 * block view.js and the postMessage donate-bridge. The honor-scroll block
+	 * needs only its view.js.
+	 *
+	 * @return string[]
+	 */
+	public function get_script_depends(): array {
+		$block = $this->get_block_name();
+		$deps  = array();
+
+		// Blocks that ship a front-end view.js registered by ElementorManager.
+		$view_script_blocks = array(
+			'campaign-donate-button',
+			'campaign-donation-tiles',
+			'campaign-honor-scroll',
+		);
+
+		if ( in_array( $block, $view_script_blocks, true ) ) {
+			$deps[] = 'fundraisehub-' . $block . '-view';
+		}
+
+		// Iframe-based blocks also require the donate postMessage bridge.
+		$iframe_blocks = array(
+			'campaign-donate-button',
+			'campaign-donation-tiles',
+		);
+
+		if ( in_array( $block, $iframe_blocks, true ) ) {
+			$deps[] = 'fundraisehub-donate-bridge';
+		}
+
+		return $deps;
+	}
+
 	// -------------------------------------------------------------------------
 	// Controls
 	// -------------------------------------------------------------------------
@@ -201,9 +238,10 @@ abstract class CampaignWidgetBase extends \Elementor\Widget_Base {
 	 *
 	 * @param \WP_Post $post Campaign post object.
 	 *
-	 * @return string Post title or "(no title)".
+	 * @return string Sanitized plain-text post title or "(no title)".
 	 */
 	private static function format_campaign_title( \WP_Post $post ): string {
-		return '' !== $post->post_title ? $post->post_title : esc_html__( '(no title)', 'fundraisehub-elementor' );
+		$title = '' !== $post->post_title ? $post->post_title : __( '(no title)', 'fundraisehub-elementor' );
+		return sanitize_text_field( $title );
 	}
 }
