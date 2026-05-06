@@ -48,9 +48,14 @@ function fundraisehub_elementor_init(): void {
 		return;
 	}
 
-	// Dependency check: Elementor.
+	// Dependency check: Elementor (must be loaded and version 3.5+).
 	if ( ! did_action( 'elementor/loaded' ) ) {
 		add_action( 'admin_notices', __NAMESPACE__ . '\\fundraisehub_elementor_missing_elementor_notice' );
+		return;
+	}
+
+	if ( defined( 'ELEMENTOR_VERSION' ) && ! version_compare( ELEMENTOR_VERSION, '3.5', '>=' ) ) {
+		add_action( 'admin_notices', __NAMESPACE__ . '\\fundraisehub_elementor_old_elementor_notice' );
 		return;
 	}
 
@@ -84,6 +89,19 @@ function fundraisehub_elementor_missing_elementor_notice(): void {
 	<div class="notice notice-error">
 		<p>
 			<?php esc_html_e( 'FundRaiseHub Elementor requires Elementor to be installed and active.', 'fundraisehub-elementor' ); ?>
+		</p>
+	</div>
+	<?php
+}
+
+/**
+ * Admin notice when Elementor version is too old (requires 3.5+).
+ */
+function fundraisehub_elementor_old_elementor_notice(): void {
+	?>
+	<div class="notice notice-error">
+		<p>
+			<?php esc_html_e( 'FundRaiseHub Elementor requires Elementor version 3.5 or higher.', 'fundraisehub-elementor' ); ?>
 		</p>
 	</div>
 	<?php

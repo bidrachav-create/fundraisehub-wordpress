@@ -38,6 +38,7 @@ $includes = array(
 	'includes/class-settings.php',
 	'includes/class-api-client.php',
 	'includes/class-campaign-cpt.php',
+	'includes/class-campaign-renderer.php',
 	'includes/class-block-registry.php',
 	'includes/class-shortcode-registry.php',
 	'includes/class-campaign-sync.php',
