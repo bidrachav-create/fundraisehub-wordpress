@@ -235,18 +235,18 @@ class Settings {
 			return;
 		}
 
-		$settings_url = admin_url( 'options-general.php?page=' . self::PAGE_SLUG );
+		$wizard_url = admin_url( 'admin.php?page=fundraisehub-setup' );
 		?>
 		<div class="notice notice-warning is-dismissible">
 			<p>
 				<?php
 				printf(
 					wp_kses(
-						/* translators: %s: URL to the settings page */
-						__( 'FundRaiseHub is almost ready. Please <a href="%s">configure your API key and API URL</a> to get started.', 'fundraisehub-core' ),
+						/* translators: %s: URL to the setup wizard */
+						__( 'FundRaiseHub is almost ready. Please <a href="%s">complete the setup wizard</a> to get started.', 'fundraisehub-core' ),
 						array( 'a' => array( 'href' => array() ) )
 					),
-					esc_url( $settings_url )
+					esc_url( $wizard_url )
 				);
 				?>
 			</p>
