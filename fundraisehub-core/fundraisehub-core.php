@@ -42,6 +42,7 @@ $includes = array(
 	'includes/class-block-registry.php',
 	'includes/class-shortcode-registry.php',
 	'includes/class-campaign-sync.php',
+	'includes/class-setup-wizard.php',
 );
 
 foreach ( $includes as $file ) {
@@ -59,6 +60,13 @@ function fundraisehub_core_activate(): void {
 	if ( ! get_option( 'fundraisehub_needs_setup' ) ) {
 		add_option( 'fundraisehub_needs_setup', true );
 	}
+
+	// Write a short-lived transient so the wizard page is shown once
+	// on the very first admin page load after activation.  30 seconds is
+	// enough to survive the redirect that WordPress performs after saving
+	// the activated-plugins option, but short enough that it cannot
+	// accumulate in the database if the activation redirect never fires.
+	set_transient( SetupWizard::ACTIVATION_REDIRECT_TRANSIENT, true, 30 );
 
 	// Call register_post_type() directly so the CPT exists before
 	// flush_rewrite_rules() runs (the 'init' hook has not fired yet).
@@ -93,6 +101,7 @@ function fundraisehub_core_init(): void {
 	);
 
 	( new Settings() )->register();
+	( new SetupWizard() )->register();
 	( new CampaignCPT() )->register();
 	( new BlockRegistry() )->register();
 	( new ShortcodeRegistry() )->register();
