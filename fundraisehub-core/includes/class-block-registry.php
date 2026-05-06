@@ -70,16 +70,21 @@ class BlockRegistry {
 
 		$script_url  = FUNDRAISEHUB_CORE_URL . 'assets/js/donate-bridge.js';
 		$script_path = FUNDRAISEHUB_CORE_DIR . 'assets/js/donate-bridge.js';
+		$asset_file  = FUNDRAISEHUB_CORE_DIR . 'assets/js/donate-bridge.asset.php';
 
 		if ( ! file_exists( $script_path ) ) {
 			return;
 		}
 
+		$asset        = file_exists( $asset_file ) ? require $asset_file : array();
+		$dependencies = $asset['dependencies'] ?? array();
+		$version      = $asset['version'] ?? FUNDRAISEHUB_CORE_VERSION;
+
 		wp_enqueue_script(
 			'fundraisehub-donate-bridge',
 			$script_url,
-			array(),
-			FUNDRAISEHUB_CORE_VERSION,
+			$dependencies,
+			$version,
 			true
 		);
 
