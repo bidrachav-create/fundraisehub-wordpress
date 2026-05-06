@@ -29,8 +29,8 @@ if ( empty( $block_cfg['enabled'] ) ) {
 	return;
 }
 
-$banner_url     = esc_url( (string) ( $campaign_data['banner_url'] ?? $campaign_data['banner_image'] ?? '' ) );
-$campaign_title = esc_attr( (string) ( $campaign_data['name'] ?? $campaign_data['title'] ?? '' ) );
+$banner_url     = (string) ( $campaign_data['banner_url'] ?? $campaign_data['banner_image'] ?? '' );
+$campaign_title = (string) ( $campaign_data['name'] ?? $campaign_data['title'] ?? '' );
 
 if ( ! $banner_url ) {
 	return;

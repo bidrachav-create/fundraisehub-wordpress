@@ -17,10 +17,16 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 global $wpdb;
 
 // Delete all plugin options.
+// fundraisehub_api_url is the current primary option; fundraisehub_site_url is its
+// legacy predecessor kept for backward compatibility. Both are removed on uninstall.
 $options = array(
 	'fundraisehub_needs_setup',
 	'fundraisehub_api_key',
+	'fundraisehub_api_url',
 	'fundraisehub_site_url',
+	'fundraisehub_campaign_slug',
+	'fundraisehub_api_cache_ver',
+	'fundraisehub_list_cache_ver',
 );
 
 foreach ( $options as $option ) {

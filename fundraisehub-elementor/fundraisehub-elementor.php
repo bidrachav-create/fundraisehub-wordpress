@@ -54,7 +54,7 @@ function fundraisehub_elementor_init(): void {
 		return;
 	}
 
-	if ( defined( 'ELEMENTOR_VERSION' ) && ! version_compare( ELEMENTOR_VERSION, '3.5', '>=' ) ) {
+	if ( ! version_compare( ELEMENTOR_VERSION, '3.5', '>=' ) ) {
 		add_action( 'admin_notices', __NAMESPACE__ . '\\fundraisehub_elementor_old_elementor_notice' );
 		return;
 	}
