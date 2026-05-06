@@ -190,9 +190,20 @@ abstract class CampaignWidgetBase extends \Elementor\Widget_Base {
 		);
 
 		foreach ( $posts as $post ) {
-			$options[ (string) $post->ID ] = '' !== $post->post_title ? $post->post_title : esc_html__( '(no title)', 'fundraisehub-elementor' );
+			$options[ (string) $post->ID ] = self::format_campaign_title( $post );
 		}
 
 		return $options;
+	}
+
+	/**
+	 * Return a campaign post's display title, falling back to a translated placeholder.
+	 *
+	 * @param \WP_Post $post Campaign post object.
+	 *
+	 * @return string Post title or "(no title)".
+	 */
+	private static function format_campaign_title( \WP_Post $post ): string {
+		return '' !== $post->post_title ? $post->post_title : esc_html__( '(no title)', 'fundraisehub-elementor' );
 	}
 }

@@ -57,10 +57,7 @@ class ElementorManager {
 	 */
 	public function register_widgets( \Elementor\Widgets_Manager $widgets_manager ): void {
 		// Load the abstract base class before any concrete widget is required.
-		$base_file = FUNDRAISEHUB_ELEMENTOR_DIR . 'includes/class-campaign-widget-base.php';
-		if ( file_exists( $base_file ) ) {
-			require_once $base_file;
-		}
+		require_once FUNDRAISEHUB_ELEMENTOR_DIR . 'includes/class-campaign-widget-base.php';
 
 		$widgets_dir = FUNDRAISEHUB_ELEMENTOR_DIR . 'widgets';
 
@@ -120,7 +117,7 @@ class ElementorManager {
 		foreach ( $posts as $post ) {
 			$options[] = array(
 				'id'   => $post->ID,
-				'text' => '' !== $post->post_title ? $post->post_title : esc_html__( '(no title)', 'fundraisehub-elementor' ),
+				'text' => self::format_campaign_title( $post ),
 			);
 		}
 
@@ -140,5 +137,16 @@ class ElementorManager {
 	 */
 	private function slug_to_class_name( string $slug ): string {
 		return str_replace( ' ', '', ucwords( str_replace( '-', ' ', $slug ) ) );
+	}
+
+	/**
+	 * Return a campaign post's display title, falling back to a translated placeholder.
+	 *
+	 * @param \WP_Post $post Campaign post object.
+	 *
+	 * @return string Post title or "(no title)".
+	 */
+	private static function format_campaign_title( \WP_Post $post ): string {
+		return '' !== $post->post_title ? $post->post_title : esc_html__( '(no title)', 'fundraisehub-elementor' );
 	}
 }
