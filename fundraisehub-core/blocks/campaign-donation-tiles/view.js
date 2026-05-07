@@ -116,10 +116,12 @@ function openDonationOverlay( iframe, trigger ) {
 			const first = focusableElements[ 0 ];
 			const last = focusableElements[ focusableElements.length - 1 ];
 
-			if ( e.shiftKey && document.activeElement === first ) {
+			const activeEl = overlay.ownerDocument.activeElement;
+
+			if ( e.shiftKey && activeEl === first ) {
 				e.preventDefault();
 				last.focus();
-			} else if ( ! e.shiftKey && document.activeElement === last ) {
+			} else if ( ! e.shiftKey && activeEl === last ) {
 				e.preventDefault();
 				first.focus();
 			}
