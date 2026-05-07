@@ -72,54 +72,11 @@ class CampaignRenderer {
 	 * @return mixed[]
 	 */
 	private static function normalize_campaign_data( array $campaign_data ): array {
-		if ( isset( $campaign_data['campaign'] ) && is_array( $campaign_data['campaign'] ) ) {
-			$base = $campaign_data['campaign'];
-
-			foreach ( array( 'layout', 'teams', 'ambassadors', 'comments', 'media', 'recentDonations', 'recent_donations' ) as $related_key ) {
-				if ( isset( $campaign_data[ $related_key ] ) && is_array( $campaign_data[ $related_key ] ) ) {
-					$base[ $related_key ] = $campaign_data[ $related_key ];
-				}
-			}
-
-			$campaign_data = $base;
+		if ( isset( $campaign_data['data'] ) && is_array( $campaign_data['data'] ) ) {
+			$campaign_data = $campaign_data['data'];
 		}
 
-		$campaign_id = $campaign_data['id'] ?? $campaign_data['campaignId'] ?? $campaign_data['campaign_id'] ?? '';
-		if ( '' !== (string) $campaign_id ) {
-			$campaign_data['id'] = (string) $campaign_id;
-		}
-
-		$name = $campaign_data['name'] ?? $campaign_data['title'] ?? $campaign_data['campaignName'] ?? '';
-		if ( '' !== (string) $name ) {
-			$campaign_data['name']  = (string) $name;
-			$campaign_data['title'] = (string) $name;
-		}
-
-		$campaign_data['amount_raised'] = (float) ( $campaign_data['amount_raised'] ?? $campaign_data['amountRaised'] ?? $campaign_data['raised'] ?? 0 );
-		$campaign_data['raised']        = (float) $campaign_data['amount_raised'];
-		$campaign_data['goal_amount']   = (float) ( $campaign_data['goal_amount'] ?? $campaign_data['goalAmount'] ?? $campaign_data['goal'] ?? 0 );
-		$campaign_data['goal']          = (float) $campaign_data['goal_amount'];
-
-		$recent_donations = $campaign_data['recentDonations'] ?? $campaign_data['recent_donations'] ?? $campaign_data['donors'] ?? array();
-		if ( is_array( $recent_donations ) ) {
-			$campaign_data['recentDonations'] = $recent_donations;
-			$campaign_data['recent_donors']   = $recent_donations;
-			$campaign_data['donors']          = $recent_donations;
-		}
-
-		$donor_count = $campaign_data['donor_count'] ?? $campaign_data['donorCount'] ?? $campaign_data['totalDonors'] ?? $campaign_data['total_donors'] ?? $campaign_data['donorsCount'] ?? null;
-		if ( null !== $donor_count ) {
-			$campaign_data['donor_count'] = (int) $donor_count;
-		}
-
-		$campaign_data['donation_amounts'] = $campaign_data['donation_amounts'] ?? $campaign_data['donationAmounts'] ?? array();
-		$campaign_data['banner_url']       = $campaign_data['banner_url'] ?? $campaign_data['bannerUrl'] ?? $campaign_data['banner_image'] ?? $campaign_data['bannerImage'] ?? '';
-		$campaign_data['video_url']        = $campaign_data['video_url'] ?? $campaign_data['videoUrl'] ?? $campaign_data['video'] ?? '';
-		$campaign_data['gallery_images']   = $campaign_data['gallery_images'] ?? $campaign_data['galleryImages'] ?? $campaign_data['media'] ?? $campaign_data['images'] ?? array();
-		$campaign_data['images']           = $campaign_data['images'] ?? $campaign_data['gallery_images'];
-		$campaign_data['url']              = $campaign_data['url'] ?? $campaign_data['publicUrl'] ?? $campaign_data['public_url'] ?? $campaign_data['campaignUrl'] ?? '';
-
-		return $campaign_data;
+		return CampaignSync::normalize_campaign_payload( $campaign_data );
 	}
 
 	// -------------------------------------------------------------------------

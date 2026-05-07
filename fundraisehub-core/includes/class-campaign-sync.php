@@ -249,7 +249,15 @@ class CampaignSync {
 					$campaign_detail = $campaign;
 				}
 
-				$this->upsert_campaign_post( $campaign_detail );
+				$post_id = $this->upsert_campaign_post( $campaign_detail );
+
+				if ( ! is_wp_error( $post_id ) ) {
+					// Refresh the individual campaign transient even when detail falls
+					// back to list data, so fetch callers do not repeatedly hit a
+					// failing detail endpoint.
+					$transient_key = self::CAMPAIGN_TRANSIENT_PREFIX . sanitize_key( $campaign_id );
+					set_transient( $transient_key, $campaign_detail, self::CACHE_TTL );
+				}
 			}
 
 			++$page;
@@ -407,24 +415,7 @@ class CampaignSync {
 			return array();
 		}
 
-		$campaign = $data;
-		if ( isset( $data['campaign'] ) && is_array( $data['campaign'] ) ) {
-			$campaign = $data['campaign'];
-		}
-
-		if ( ! is_array( $campaign ) ) {
-			$campaign = array();
-		}
-
-		$related_keys = array( 'teams', 'ambassadors', 'comments', 'media', 'recentDonations', 'recent_donations' );
-
-		foreach ( $related_keys as $related_key ) {
-			if ( isset( $data[ $related_key ] ) && is_array( $data[ $related_key ] ) ) {
-				$campaign[ $related_key ] = $data[ $related_key ];
-			}
-		}
-
-		return $this->normalize_campaign_payload( $campaign );
+		return self::normalize_campaign_payload( $data );
 	}
 
 	/**
@@ -444,7 +435,7 @@ class CampaignSync {
 		$is_list = isset( $data[0] ) && is_array( $data[0] );
 		if ( ! $is_list ) {
 			if ( isset( $data['campaign'] ) && is_array( $data['campaign'] ) ) {
-				return array( $this->normalize_campaign_payload( $data ) );
+				return array( self::normalize_campaign_payload( $data ) );
 			}
 			return array();
 		}
@@ -454,7 +445,7 @@ class CampaignSync {
 			if ( ! is_array( $campaign ) ) {
 				continue;
 			}
-			$campaigns[] = $this->normalize_campaign_payload( $campaign );
+			$campaigns[] = self::normalize_campaign_payload( $campaign );
 		}
 
 		return $campaigns;
@@ -467,10 +458,10 @@ class CampaignSync {
 	 *
 	 * @return mixed[]
 	 */
-	private function normalize_campaign_payload( array $campaign ): array {
+	public static function normalize_campaign_payload( array $campaign ): array {
 		if ( isset( $campaign['campaign'] ) && is_array( $campaign['campaign'] ) ) {
 			$base_campaign = $campaign['campaign'];
-			foreach ( array( 'teams', 'ambassadors', 'comments', 'media', 'recentDonations', 'recent_donations' ) as $related_key ) {
+			foreach ( array( 'layout', 'teams', 'ambassadors', 'comments', 'media', 'recentDonations', 'recent_donations' ) as $related_key ) {
 				if ( isset( $campaign[ $related_key ] ) && is_array( $campaign[ $related_key ] ) ) {
 					$base_campaign[ $related_key ] = $campaign[ $related_key ];
 				}

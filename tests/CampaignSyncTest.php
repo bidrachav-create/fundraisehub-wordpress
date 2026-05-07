@@ -330,6 +330,27 @@ class CampaignSyncTest extends TestCase {
 	}
 
 	/**
+	 * sync_all() should refresh the individual campaign transient when detail fetch fails.
+	 */
+	public function test_sync_all_sets_campaign_transient_when_detail_falls_back_to_list_item(): void {
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'data' => array(
+					$this->campaign( '88', 'List Payload Campaign' ),
+				),
+			)
+		);
+		WPTestState::$http_response_queue[] = new WP_Error( 'http_request_failed', 'Timeout' );
+
+		$sync = new CampaignSync( $this->make_client() );
+		$sync->sync_all();
+
+		$this->assertArrayHasKey( 'fundraisehub_campaign_88', WPTestState::$transients );
+		$this->assertSame( '88', WPTestState::$transients['fundraisehub_campaign_88']['id'] ?? null );
+		$this->assertSame( 'List Payload Campaign', WPTestState::$transients['fundraisehub_campaign_88']['title'] ?? null );
+	}
+
+	/**
 	 * sync_all() should bump the list-cache version after completing.
 	 */
 	public function test_sync_all_bumps_list_cache_version(): void {
