@@ -62,6 +62,20 @@ class CampaignRendererTest extends TestCase {
 	// -------------------------------------------------------------------------
 
 	/**
+	 * parse_amount() should treat comma-only grouped values as thousands separators.
+	 */
+	public function test_parse_amount_handles_comma_grouping(): void {
+		$this->assertSame( 1250.0, CampaignRenderer::parse_amount( '1,250' ) );
+	}
+
+	/**
+	 * parse_amount() should parse European thousands/decimal formatting.
+	 */
+	public function test_parse_amount_handles_european_grouping_and_decimal(): void {
+		$this->assertSame( 1250.75, CampaignRenderer::parse_amount( '1.250,75' ) );
+	}
+
+	/**
 	 * render_block() should return an empty string for an unknown block slug,
 	 * even when typical campaign data is supplied.
 	 */
@@ -151,6 +165,22 @@ class CampaignRendererTest extends TestCase {
 		$this->assertStringContainsString( '1,500.00', $html );
 		$this->assertStringContainsString( '5,000.00', $html );
 		$this->assertStringContainsString( '20', $html );
+	}
+
+	/**
+	 * render_stats_bar() should respect campaign currency code when present.
+	 */
+	public function test_render_stats_bar_uses_campaign_currency_code(): void {
+		$campaign = $this->campaign_with_block(
+			'stats_bar',
+			array(
+				'currency' => 'EUR',
+			)
+		);
+		$html     = CampaignRenderer::render_stats_bar( $campaign );
+
+		$this->assertStringContainsString( 'EUR 1,500.00', $html );
+		$this->assertStringContainsString( 'EUR 5,000.00', $html );
 	}
 
 	/**
@@ -468,6 +498,23 @@ class CampaignRendererTest extends TestCase {
 	}
 
 	/**
+	 * render_donation_tiles() should respect currency symbol.
+	 */
+	public function test_donation_tiles_respects_currency_symbol(): void {
+		$campaign = $this->campaign_with_block(
+			'donation_tiles',
+			array(
+				'donation_amounts' => array( '10.50' ),
+				'currency_symbol'  => '€',
+			)
+		);
+
+		$html = CampaignRenderer::render_donation_tiles( $campaign, 'https://app.fundraisehub.com' );
+
+		$this->assertStringContainsString( '€10.50', $html );
+	}
+
+	/**
 	 * render_donation_tiles() returns '' when there are no amounts.
 	 */
 	public function test_donation_tiles_returns_empty_when_no_amounts(): void {
@@ -566,6 +613,26 @@ class CampaignRendererTest extends TestCase {
 	}
 
 	/**
+	 * render_honor_scroll() should map donorName fields from recent donations.
+	 */
+	public function test_render_honor_scroll_maps_donor_name_variants(): void {
+		$campaign = $this->campaign_with_block(
+			'honor_scroll',
+			array(
+				'recentDonations' => array(
+					array( 'donorName' => 'Recent Donor', 'amount' => '1,250.75' ),
+				),
+				'currency'        => 'USD',
+			)
+		);
+
+		$html = CampaignRenderer::render_honor_scroll( $campaign );
+
+		$this->assertStringContainsString( 'Recent Donor', $html );
+		$this->assertStringContainsString( 'USD 1,250.75', $html );
+	}
+
+	/**
 	 * render_teams() returns '' when disabled.
 	 */
 	public function test_render_teams_returns_empty_when_disabled(): void {
@@ -591,6 +658,25 @@ class CampaignRendererTest extends TestCase {
 
 		$this->assertStringContainsString( 'Team Alpha', $html );
 		$this->assertStringContainsString( '3,000.00', $html );
+	}
+
+	/**
+	 * render_teams() should render team totals with configured currency code.
+	 */
+	public function test_render_teams_uses_currency_code(): void {
+		$campaign = $this->campaign_with_block(
+			'teams',
+			array(
+				'currency' => 'GBP',
+				'teams'    => array(
+					array( 'name' => 'Team Alpha', 'amount_raised' => '2500.5' ),
+				),
+			)
+		);
+
+		$html = CampaignRenderer::render_teams( $campaign );
+
+		$this->assertStringContainsString( 'GBP 2,500.50', $html );
 	}
 
 	/**

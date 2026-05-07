@@ -79,6 +79,106 @@ class CampaignRenderer {
 		return CampaignSync::normalize_campaign_payload( $campaign_data );
 	}
 
+	/**
+	 * Resolve a donor display name from donor payload variants.
+	 *
+	 * @param mixed[] $donor Donor payload.
+	 *
+	 * @return string
+	 */
+	public static function donor_display_name( array $donor ): string {
+		$name = $donor['name'] ?? $donor['donor_name'] ?? $donor['donorName'] ?? null;
+		if ( null === $name && isset( $donor['donor'] ) && is_array( $donor['donor'] ) ) {
+			$name = $donor['donor']['name'] ?? $donor['donor']['donor_name'] ?? $donor['donor']['donorName'] ?? null;
+		}
+
+		$name = trim( (string) $name );
+		return '' !== $name ? $name : __( 'Anonymous', 'fundraisehub-core' );
+	}
+
+	/**
+	 * Parse potentially formatted money values safely.
+	 *
+	 * @param mixed $value Raw amount value.
+	 *
+	 * @return float
+	 */
+	public static function parse_amount( mixed $value ): float {
+		if ( is_int( $value ) || is_float( $value ) ) {
+			return (float) $value;
+		}
+
+		if ( ! is_string( $value ) ) {
+			return 0.0;
+		}
+
+		$normalized = preg_replace( '/[^\d,\.\-]/', '', trim( $value ) );
+		if ( ! is_string( $normalized ) || '' === $normalized ) {
+			return 0.0;
+		}
+
+		if ( str_contains( $normalized, ',' ) && str_contains( $normalized, '.' ) ) {
+			$last_comma = strrpos( $normalized, ',' );
+			$last_dot   = strrpos( $normalized, '.' );
+
+			if ( false !== $last_comma && false !== $last_dot && $last_comma > $last_dot ) {
+				// European style: 1.250,75.
+				$normalized = str_replace( '.', '', $normalized );
+				$normalized = str_replace( ',', '.', $normalized );
+			} else {
+				// US/UK style: 1,250.75.
+				$normalized = str_replace( ',', '', $normalized );
+			}
+		} elseif ( str_contains( $normalized, ',' ) ) {
+			if ( 1 === preg_match( '/^-?\d{1,3}(,\d{3})+$/', $normalized ) ) {
+				// Thousands grouping only: 1,250.
+				$normalized = str_replace( ',', '', $normalized );
+			} else {
+				// Decimal comma: 1,25.
+				$normalized = str_replace( ',', '.', $normalized );
+			}
+		} elseif ( str_contains( $normalized, '.' ) && 1 === preg_match( '/^-?\d{1,3}(\.\d{3})+$/', $normalized ) ) {
+			// Thousands grouping only with dot: 1.250.
+			$normalized = str_replace( '.', '', $normalized );
+		}
+
+		return is_numeric( $normalized ) ? (float) $normalized : 0.0;
+	}
+
+	/**
+	 * Return the campaign currency label (symbol or code prefix).
+	 *
+	 * @param mixed[] $campaign_data Campaign payload.
+	 *
+	 * @return string
+	 */
+	private static function currency_label( array $campaign_data ): string {
+		$currency_symbol = trim( (string) ( $campaign_data['currency_symbol'] ?? $campaign_data['currencySymbol'] ?? '' ) );
+		if ( '' !== $currency_symbol ) {
+			return $currency_symbol;
+		}
+
+		$currency_code = trim( strtoupper( (string) ( $campaign_data['currency'] ?? $campaign_data['currency_code'] ?? $campaign_data['currencyCode'] ?? '' ) ) );
+		if ( '' !== $currency_code ) {
+			return $currency_code . ' ';
+		}
+
+		return '$';
+	}
+
+	/**
+	 * Format a money value with campaign currency context.
+	 *
+	 * @param mixed   $amount        Raw amount.
+	 * @param mixed[] $campaign_data Campaign payload.
+	 *
+	 * @return string
+	 */
+	public static function format_money( mixed $amount, array $campaign_data ): string {
+		$parsed_amount = self::parse_amount( $amount );
+		return self::currency_label( $campaign_data ) . number_format( $parsed_amount, 2 );
+	}
+
 	// -------------------------------------------------------------------------
 	// Per-block render methods
 	// -------------------------------------------------------------------------
@@ -137,15 +237,15 @@ class CampaignRenderer {
 			return '';
 		}
 
-		$amount_raised = number_format( (float) ( $campaign_data['amount_raised'] ?? $campaign_data['raised'] ?? 0 ), 2 );
+		$amount_raised = $campaign_data['amount_raised'] ?? $campaign_data['raised'] ?? 0;
 		$donor_count   = (int) ( $campaign_data['donor_count'] ?? $campaign_data['donorCount'] ?? $campaign_data['totalDonors'] ?? $campaign_data['total_donors'] ?? $campaign_data['donorsCount'] ?? 0 );
-		$goal_amount   = number_format( (float) ( $campaign_data['goal_amount'] ?? $campaign_data['goal'] ?? 0 ), 2 );
+		$goal_amount   = $campaign_data['goal_amount'] ?? $campaign_data['goal'] ?? 0;
 
 		ob_start();
 		?>
 		<div class="fundraisehub-campaign-stats-bar">
 			<div class="fundraisehub-campaign-stats-bar__item">
-				<span class="fundraisehub-campaign-stats-bar__value"><?php echo esc_html( '$' . $amount_raised ); ?></span>
+				<span class="fundraisehub-campaign-stats-bar__value"><?php echo esc_html( self::format_money( $amount_raised, $campaign_data ) ); ?></span>
 				<span class="fundraisehub-campaign-stats-bar__label"><?php esc_html_e( 'Raised', 'fundraisehub-core' ); ?></span>
 			</div>
 			<div class="fundraisehub-campaign-stats-bar__item">
@@ -153,7 +253,7 @@ class CampaignRenderer {
 				<span class="fundraisehub-campaign-stats-bar__label"><?php esc_html_e( 'Donors', 'fundraisehub-core' ); ?></span>
 			</div>
 			<div class="fundraisehub-campaign-stats-bar__item">
-				<span class="fundraisehub-campaign-stats-bar__value"><?php echo esc_html( '$' . $goal_amount ); ?></span>
+				<span class="fundraisehub-campaign-stats-bar__value"><?php echo esc_html( self::format_money( $goal_amount, $campaign_data ) ); ?></span>
 				<span class="fundraisehub-campaign-stats-bar__label"><?php esc_html_e( 'Goal', 'fundraisehub-core' ); ?></span>
 			</div>
 		</div>
@@ -363,7 +463,7 @@ class CampaignRenderer {
 					class="fundraisehub-campaign-donation-tiles__tile"
 					data-amount="<?php echo esc_attr( (string) $amount ); ?>"
 				>
-					<?php echo esc_html( '$' . number_format( (float) $amount, 2 ) ); ?>
+					<?php echo esc_html( self::format_money( $amount, $campaign_data ) ); ?>
 				</button>
 			<?php endforeach; ?>
 			<?php if ( $iframe_src ) : ?>
@@ -415,13 +515,13 @@ class CampaignRenderer {
 			<ul class="fundraisehub-campaign-honor-scroll__list">
 				<?php
 				foreach ( $donors as $donor ) :
-					$name   = esc_html( (string) ( $donor['name'] ?? $donor['donor_name'] ?? __( 'Anonymous', 'fundraisehub-core' ) ) );
-					$amount = (float) ( $donor['amount'] ?? 0 );
+					$name   = esc_html( self::donor_display_name( $donor ) );
+					$amount = self::parse_amount( $donor['amount'] ?? 0 );
 					?>
 					<li class="fundraisehub-campaign-honor-scroll__item">
 						<span class="fundraisehub-campaign-honor-scroll__name"><?php echo $name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already escaped ?></span>
 						<?php if ( $amount > 0 ) : ?>
-							<span class="fundraisehub-campaign-honor-scroll__amount"><?php echo esc_html( '$' . number_format( $amount, 2 ) ); ?></span>
+							<span class="fundraisehub-campaign-honor-scroll__amount"><?php echo esc_html( self::format_money( $amount, $campaign_data ) ); ?></span>
 						<?php endif; ?>
 					</li>
 				<?php endforeach; ?>
@@ -464,12 +564,12 @@ class CampaignRenderer {
 				<?php
 				foreach ( $teams as $index => $team ) :
 					$team_name   = esc_html( (string) ( $team['name'] ?? $team['team_name'] ?? '' ) );
-					$team_raised = number_format( (float) ( $team['amount_raised'] ?? $team['raised'] ?? 0 ), 2 );
+					$team_raised = $team['amount_raised'] ?? $team['raised'] ?? 0;
 					?>
 					<li class="fundraisehub-campaign-teams__item">
 						<span class="fundraisehub-campaign-teams__rank"><?php echo esc_html( (string) ( $index + 1 ) ); ?></span>
 						<span class="fundraisehub-campaign-teams__name"><?php echo $team_name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already escaped ?></span>
-						<span class="fundraisehub-campaign-teams__raised"><?php echo esc_html( '$' . $team_raised ); ?></span>
+						<span class="fundraisehub-campaign-teams__raised"><?php echo esc_html( self::format_money( $team_raised, $campaign_data ) ); ?></span>
 					</li>
 				<?php endforeach; ?>
 			</ol>

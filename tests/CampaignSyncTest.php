@@ -110,7 +110,7 @@ class CampaignSyncTest extends TestCase {
 				),
 				'teams'          => array( array( 'name' => 'Team One' ) ),
 				'comments'       => array( array( 'message' => 'Go!' ) ),
-				'recentDonations' => array( array( 'name' => 'Alice', 'amount' => 50 ) ),
+				'recentDonations' => array( array( 'donorName' => 'Alice', 'amount' => 50 ) ),
 			),
 		);
 		WPTestState::$http_response_queue[] = WPTestState::http_ok( $raw );
@@ -125,6 +125,31 @@ class CampaignSyncTest extends TestCase {
 		$this->assertCount( 1, $result['comments'] );
 		$this->assertCount( 1, $result['recentDonations'] );
 		$this->assertCount( 1, $result['donors'] );
+		$this->assertSame( 'Alice', $result['recentDonations'][0]['name'] ?? null );
+		$this->assertSame( 'Alice', $result['recentDonations'][0]['donor_name'] ?? null );
+	}
+
+	/**
+	 * get_campaign() should normalize currency variants and expose uppercase currency.
+	 */
+	public function test_get_campaign_normalizes_currency_fields(): void {
+		$raw = array(
+			'data' => array(
+				'campaign' => array(
+					'id'            => '88',
+					'title'         => 'Currency Campaign',
+					'currencyCode'  => 'usd',
+					'currencySymbol' => '$',
+				),
+			),
+		);
+		WPTestState::$http_response_queue[] = WPTestState::http_ok( $raw );
+
+		$sync   = new CampaignSync( $this->make_client() );
+		$result = $sync->get_campaign( '88' );
+
+		$this->assertSame( 'USD', $result['currency'] ?? null );
+		$this->assertSame( '$', $result['currency_symbol'] ?? null );
 	}
 
 	/**

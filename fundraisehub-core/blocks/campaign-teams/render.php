@@ -22,6 +22,8 @@ if ( ! is_array( $campaign_data ) ) {
 	return;
 }
 
+$campaign_data = \FundRaiseHub\Core\CampaignSync::normalize_campaign_payload( $campaign_data );
+
 $layout    = $campaign_data['layout'] ?? array();
 $block_cfg = $layout['teams'] ?? array();
 
@@ -44,12 +46,12 @@ if ( empty( $teams ) ) {
 		<?php
 		foreach ( $teams as $index => $team ) :
 			$team_name   = esc_html( (string) ( $team['name'] ?? $team['team_name'] ?? '' ) );
-			$team_raised = number_format( (float) ( $team['amount_raised'] ?? $team['raised'] ?? 0 ), 2 );
+			$team_raised = $team['amount_raised'] ?? $team['raised'] ?? 0;
 			?>
 			<li class="fundraisehub-campaign-teams__item">
 				<span class="fundraisehub-campaign-teams__rank"><?php echo esc_html( (string) ( $index + 1 ) ); ?></span>
 				<span class="fundraisehub-campaign-teams__name"><?php echo $team_name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already escaped ?></span>
-				<span class="fundraisehub-campaign-teams__raised"><?php echo esc_html( '$' . $team_raised ); ?></span>
+				<span class="fundraisehub-campaign-teams__raised"><?php echo esc_html( \FundRaiseHub\Core\CampaignRenderer::format_money( $team_raised, $campaign_data ) ); ?></span>
 			</li>
 		<?php endforeach; ?>
 	</ol>

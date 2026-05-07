@@ -121,6 +121,8 @@ class WPTestState {
 	public static bool $is_user_logged_in = false;
 	/** @var bool Return value for wp_using_ext_object_cache(). */
 	public static bool $using_ext_object_cache = false;
+	/** @var string Return value for home_url() base URL. */
+	public static string $home_url = 'https://example.org';
 
 	/** Build a default successful HTTP response with a JSON body. */
 	public static function http_ok( mixed $data ): array {
@@ -158,6 +160,7 @@ class WPTestState {
 		self::$current_user_can       = false;
 		self::$is_user_logged_in      = false;
 		self::$using_ext_object_cache = false;
+		self::$home_url               = 'https://example.org';
 	}
 
 	/** Dequeue the next HTTP response, or return a default 200 OK with {}. */
@@ -298,7 +301,13 @@ function add_query_arg( array|string $key_or_params, string $value_or_url = '', 
 }
 
 function home_url( string $path = '' ): string {
-	return 'https://example.org' . $path;
+	$base = rtrim( WPTestState::$home_url, '/' );
+
+	if ( '' === $path ) {
+		return $base;
+	}
+
+	return $base . '/' . ltrim( $path, '/' );
 }
 
 function admin_url( string $path = '' ): string {

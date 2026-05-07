@@ -118,16 +118,16 @@ class ShortcodeRegistry {
 	/**
 	 * Render a single campaign card.
 	 *
-	 * @param mixed[] $campaign Campaign data array.
-	 * @param string  $class    Additional CSS class.
+	 * @param mixed[] $campaign  Campaign data array.
+	 * @param string  $css_class Additional CSS class.
 	 */
-	private function render_campaign_card( array $campaign, string $class = '' ): void {
+	private function render_campaign_card( array $campaign, string $css_class = '' ): void {
 		$title       = (string) ( $campaign['name'] ?? $campaign['title'] ?? $campaign['campaignName'] ?? '' );
 		$description = (string) ( $campaign['description'] ?? $campaign['body'] ?? '' );
 		$goal        = (float) ( $campaign['goal_amount'] ?? $campaign['goalAmount'] ?? $campaign['goal'] ?? 0 );
 		$raised      = (float) ( $campaign['amount_raised'] ?? $campaign['amountRaised'] ?? $campaign['raised'] ?? 0 );
 		$url         = (string) ( $campaign['url'] ?? $campaign['publicUrl'] ?? $campaign['public_url'] ?? $campaign['campaignUrl'] ?? '' );
-		$class_attr  = 'fundraisehub-campaign-card ' . $class;
+		$class_attr  = 'fundraisehub-campaign-card ' . $css_class;
 		?>
 		<div class="<?php echo esc_attr( $class_attr ); ?>">
 			<h3 class="fundraisehub-campaign-title"><?php echo esc_html( $title ); ?></h3>

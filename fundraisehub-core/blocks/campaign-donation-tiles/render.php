@@ -23,6 +23,8 @@ if ( ! is_array( $campaign_data ) ) {
 	return;
 }
 
+$campaign_data = \FundRaiseHub\Core\CampaignSync::normalize_campaign_payload( $campaign_data );
+
 $layout    = $campaign_data['layout'] ?? array();
 $block_cfg = $layout['donation_tiles'] ?? array();
 
@@ -78,7 +80,7 @@ if ( $api_url && $campaign_id ) {
 			class="fundraisehub-campaign-donation-tiles__tile"
 			data-amount="<?php echo esc_attr( (string) $amount ); ?>"
 		>
-			<?php echo esc_html( '$' . number_format( (float) $amount, 2 ) ); ?>
+			<?php echo esc_html( \FundRaiseHub\Core\CampaignRenderer::format_money( $amount, $campaign_data ) ); ?>
 		</button>
 	<?php endforeach; ?>
 	<?php if ( $iframe_src ) : ?>

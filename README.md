@@ -262,7 +262,8 @@ Current backend contract support:
 
 - Campaign list sync calls `/api/wp/v1/campaigns`, then fetches each campaign detail from `/api/wp/v1/campaigns/{campaignId}`.
 - Detail responses using nested payloads (for example `data.campaign`, `data.teams`, `data.ambassadors`, `data.comments`, `data.media`, `data.recentDonations`) are normalized and stored in `_fundraisehub_campaign_data`.
-- Renderers and shortcodes consume normalized fields such as `id`, `name/title`, `description`, `amount_raised`, `goal_amount`, `donor_count`, `donation_amounts`, `teams`, `comments`, `media`, and `recentDonations`.
+- Donor list payloads normalize `recentDonations` entries so donor names are available consistently from `name`, including backend variants like `donorName` / `donor_name`.
+- Renderers and shortcodes consume normalized fields such as `id`, `name/title`, `description`, `amount_raised`, `goal_amount`, `donor_count`, `currency` / `currency_symbol`, `donation_amounts`, `teams`, `comments`, `media`, and `recentDonations`.
 
 After updating to a version that includes this contract support, run **Sync Now** once so existing campaign posts are refreshed with the latest detail payload.
 
@@ -336,7 +337,7 @@ The plugin flushes rewrite rules automatically when the slug is changed via the 
 - **Storage:** The API key is stored in the WordPress `wp_options` table as a plain string. Protect your WordPress database accordingly. The key is never written to log files or rendered in HTML visible to unauthenticated visitors.
 
 - **Transport:** All API requests use HTTPS. The key is sent as a `Bearer` token in the `Authorization` HTTP header.
-- **Origin hardening:** Server-to-server requests also include deterministic `Origin` and `X-FundraiseHub-Site-Origin` headers derived from `home_url()` as defense in depth for backend origin validation.
+- **Origin hardening:** Server-to-server requests also include deterministic `Origin` and `X-FundraiseHub-Site-Origin` headers derived from `home_url()`. The plugin normalizes this value to `scheme://host[:port]` (path/query/trailing slash removed) for backend origin validation.
 
 - **Output escaping:** All data fetched from the FundRaiseHub API is escaped before being output to HTML (`esc_html`, `esc_attr`, `esc_url`, `wp_kses_post`).
 

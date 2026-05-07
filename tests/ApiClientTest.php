@@ -493,4 +493,29 @@ class ApiClientTest extends TestCase {
 		$this->assertSame( 'https://example.org', $headers['Origin'] ?? '' );
 		$this->assertSame( 'https://example.org', $headers['X-FundraiseHub-Site-Origin'] ?? '' );
 	}
+
+	/**
+	 * get() should normalize origin headers to scheme+host+port from home_url().
+	 */
+	public function test_get_normalizes_site_origin_headers(): void {
+		WPTestState::$home_url              = 'https://example.org:8443/sub/path/';
+		WPTestState::$http_response_queue[] = WPTestState::http_ok( array() );
+
+		$client = new ApiClient( 'https://api.fundraisehub.com', 'my-secret-key' );
+		$client->get( 'campaigns' );
+
+		$headers = WPTestState::$http_get_args[0]['headers'] ?? array();
+
+		$this->assertSame( 'https://example.org:8443', $headers['Origin'] ?? '' );
+		$this->assertSame( 'https://example.org:8443', $headers['X-FundraiseHub-Site-Origin'] ?? '' );
+	}
+
+	/**
+	 * home_url() test stub should join relative paths with one slash.
+	 */
+	public function test_home_url_stub_joins_relative_paths_with_single_slash(): void {
+		WPTestState::$home_url = 'https://example.org/';
+		$this->assertSame( 'https://example.org/foo', home_url( 'foo' ) );
+		$this->assertSame( 'https://example.org/bar', home_url( '/bar' ) );
+	}
 }

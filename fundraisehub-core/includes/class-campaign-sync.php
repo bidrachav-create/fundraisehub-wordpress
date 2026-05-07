@@ -493,6 +493,16 @@ class CampaignSync {
 		$campaign['goal_amount']   = (float) $goal_amount;
 		$campaign['goal']          = (float) $goal_amount;
 
+		$currency = $campaign['currency'] ?? $campaign['currencyCode'] ?? $campaign['currency_code'] ?? '';
+		if ( '' !== (string) $currency ) {
+			$campaign['currency'] = strtoupper( (string) $currency );
+		}
+
+		$currency_symbol = $campaign['currency_symbol'] ?? $campaign['currencySymbol'] ?? '';
+		if ( '' !== (string) $currency_symbol ) {
+			$campaign['currency_symbol'] = (string) $currency_symbol;
+		}
+
 		$donation_amounts = $campaign['donation_amounts'] ?? $campaign['donationAmounts'] ?? $campaign['suggestedDonations'] ?? array();
 		if ( is_array( $donation_amounts ) ) {
 			$campaign['donation_amounts'] = $donation_amounts;
@@ -515,9 +525,10 @@ class CampaignSync {
 
 		$recent_donations = $campaign['recentDonations'] ?? $campaign['recent_donations'] ?? $campaign['donors'] ?? array();
 		if ( is_array( $recent_donations ) ) {
-			$campaign['recentDonations'] = $recent_donations;
-			$campaign['recent_donors']   = $recent_donations;
-			$campaign['donors']          = $recent_donations;
+			$normalized_recent_donations = self::normalize_recent_donations( $recent_donations );
+			$campaign['recentDonations'] = $normalized_recent_donations;
+			$campaign['recent_donors']   = $normalized_recent_donations;
+			$campaign['donors']          = $normalized_recent_donations;
 		}
 
 		$donor_count = $campaign['donor_count'] ?? $campaign['donorCount'] ?? $campaign['totalDonors'] ?? $campaign['total_donors'] ?? $campaign['donorsCount'] ?? null;
@@ -556,6 +567,37 @@ class CampaignSync {
 		}
 
 		return $campaign;
+	}
+
+	/**
+	 * Normalize donor objects from API payload variants.
+	 *
+	 * @param mixed[] $donations Donor/recent-donations payload.
+	 *
+	 * @return mixed[]
+	 */
+	private static function normalize_recent_donations( array $donations ): array {
+		$normalized = array();
+
+		foreach ( $donations as $donation ) {
+			if ( ! is_array( $donation ) ) {
+				continue;
+			}
+
+			$name = $donation['name'] ?? $donation['donor_name'] ?? $donation['donorName'] ?? null;
+			if ( null === $name && isset( $donation['donor'] ) && is_array( $donation['donor'] ) ) {
+				$name = $donation['donor']['name'] ?? $donation['donor']['donorName'] ?? $donation['donor']['donor_name'] ?? null;
+			}
+
+			if ( null !== $name && '' !== (string) $name ) {
+				$donation['name']       = (string) $name;
+				$donation['donor_name'] = (string) $name;
+			}
+
+			$normalized[] = $donation;
+		}
+
+		return $normalized;
 	}
 
 	/**

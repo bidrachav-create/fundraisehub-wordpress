@@ -7,7 +7,11 @@
 // Skip the animation entirely for users who prefer reduced motion.
 if ( window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) {
 	// Nothing to do; the static list is already visible.
-} else {
+} else if (
+	'undefined' !== typeof window.IntersectionObserver &&
+	'undefined' !== typeof window.requestAnimationFrame &&
+	'undefined' !== typeof window.cancelAnimationFrame
+) {
 	document
 		.querySelectorAll( '.fundraisehub-campaign-honor-scroll__list' )
 		.forEach( ( list ) => {
@@ -26,7 +30,7 @@ if ( window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) {
 					scrollOffset = 0;
 				}
 				list.style.transform = 'translateY(-' + scrollOffset + 'px)';
-				rafId = requestAnimationFrame( tick );
+				rafId = window.requestAnimationFrame( tick );
 			}
 
 			// Duplicate items for seamless looping.
@@ -35,14 +39,14 @@ if ( window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) {
 			list.parentNode.appendChild( clone );
 
 			// Pause when the element leaves the viewport; resume when it returns.
-			const observer = new IntersectionObserver( ( entries ) => {
+			const observer = new window.IntersectionObserver( ( entries ) => {
 				entries.forEach( ( entry ) => {
 					if ( entry.isIntersecting ) {
 						if ( ! rafId ) {
-							rafId = requestAnimationFrame( tick );
+							rafId = window.requestAnimationFrame( tick );
 						}
 					} else if ( rafId ) {
-						cancelAnimationFrame( rafId );
+						window.cancelAnimationFrame( rafId );
 						rafId = null;
 					}
 				} );
