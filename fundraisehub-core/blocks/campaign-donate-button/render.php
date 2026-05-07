@@ -48,6 +48,14 @@ if ( $api_url && $campaign_id ) {
 		),
 		rtrim( $api_url, '/' ) . '/embed/campaign/' . rawurlencode( $campaign_id )
 	);
+} elseif ( current_user_can( 'edit_posts' ) ) {
+	// Emit an admin-only notice so editors know why the donation form is missing.
+	$frhub_missing = '' === $api_url
+		? esc_html__( 'No API URL is configured.', 'fundraisehub-core' )
+		: esc_html__( 'No campaign ID found in the campaign data.', 'fundraisehub-core' );
+	echo '<div class="fundraisehub-block-notice" style="border:1px solid #dba617;background:#fff8e1;padding:1em;border-radius:4px;">';
+	echo '<strong>' . esc_html__( 'FundRaiseHub – Donate Button: embed unavailable', 'fundraisehub-core' ) . '</strong> ' . $frhub_missing; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already escaped
+	echo '</div>';
 }
 
 ?>

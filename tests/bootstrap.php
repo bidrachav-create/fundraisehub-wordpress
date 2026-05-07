@@ -9,6 +9,11 @@
 
 declare( strict_types=1 );
 
+// Load WordPress function / class stubs before the Composer autoloader so
+// that the ABSPATH guard in every plugin class file passes when PHPUnit first
+// autoloads a class during a test.
+require_once __DIR__ . '/stubs.php';
+
 // Autoload classes via Composer.
 $autoload = dirname( __DIR__ ) . '/vendor/autoload.php';
 

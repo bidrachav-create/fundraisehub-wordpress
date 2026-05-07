@@ -58,6 +58,10 @@ class CampaignCPT {
 
 		$args = array(
 			'labels'             => $labels,
+			// The CPT is public so individual campaign pages are front-end accessible,
+			// but we intentionally omit standard REST exposure because the data is
+			// read-only (synced from the remote API) and the WP REST API would return
+			// stale cached snapshots rather than live FundRaiseHub data.
 			'public'             => true,
 			'publicly_queryable' => true,
 			'show_ui'            => true,
@@ -70,7 +74,10 @@ class CampaignCPT {
 			'menu_position'      => 20,
 			'menu_icon'          => 'dashicons-heart',
 			'supports'           => array( 'title', 'editor', 'thumbnail', 'custom-fields' ),
-			'show_in_rest'       => true,
+			// Disabled: the CPT mirrors remote API data and must not be exposed via
+			// the WordPress REST API to avoid stale or duplicate data surfacing on
+			// /wp-json/wp/v2/fundraisehub_campaign.
+			'show_in_rest'       => false,
 		);
 
 		register_post_type( self::POST_TYPE, $args );
