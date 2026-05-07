@@ -530,9 +530,6 @@ class CampaignSync {
 		}
 
 		$donor_count = $campaign['donor_count'] ?? $campaign['donorCount'] ?? $campaign['totalDonors'] ?? $campaign['total_donors'] ?? $campaign['donorsCount'] ?? null;
-		if ( null === $donor_count && is_array( $recent_donations ) ) {
-			$donor_count = count( $recent_donations );
-		}
 		if ( null !== $donor_count ) {
 			$campaign['donor_count'] = (int) $donor_count;
 		}

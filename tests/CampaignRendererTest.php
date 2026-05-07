@@ -163,6 +163,7 @@ class CampaignRendererTest extends TestCase {
 				'title'       => 'Nested Campaign',
 				'amountRaised' => 1500,
 				'goalAmount'  => 5000,
+				'donorCount'  => 2,
 				'layout'      => array(
 					'stats_bar' => array( 'enabled' => true ),
 				),

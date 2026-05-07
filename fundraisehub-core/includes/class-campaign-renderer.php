@@ -108,9 +108,6 @@ class CampaignRenderer {
 		}
 
 		$donor_count = $campaign_data['donor_count'] ?? $campaign_data['donorCount'] ?? $campaign_data['totalDonors'] ?? $campaign_data['total_donors'] ?? $campaign_data['donorsCount'] ?? null;
-		if ( null === $donor_count && is_array( $recent_donations ) ) {
-			$donor_count = count( $recent_donations );
-		}
 		if ( null !== $donor_count ) {
 			$campaign_data['donor_count'] = (int) $donor_count;
 		}
@@ -184,8 +181,7 @@ class CampaignRenderer {
 		}
 
 		$amount_raised = number_format( (float) ( $campaign_data['amount_raised'] ?? $campaign_data['raised'] ?? 0 ), 2 );
-		$donors_raw    = $campaign_data['donor_count'] ?? $campaign_data['donors'] ?? 0;
-		$donor_count   = is_array( $donors_raw ) ? count( $donors_raw ) : (int) $donors_raw;
+		$donor_count   = (int) ( $campaign_data['donor_count'] ?? $campaign_data['donorCount'] ?? $campaign_data['totalDonors'] ?? $campaign_data['total_donors'] ?? $campaign_data['donorsCount'] ?? 0 );
 		$goal_amount   = number_format( (float) ( $campaign_data['goal_amount'] ?? $campaign_data['goal'] ?? 0 ), 2 );
 
 		ob_start();
