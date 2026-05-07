@@ -138,21 +138,24 @@ class ConstantOverrideTest extends TestCase {
 	/**
 	 * When FUNDRAISEHUB_API_KEY is defined it takes precedence over the stored option.
 	 *
-	 * We verify indirectly via the request headers — the stub records the full
-	 * args passed to wp_remote_get, which includes the Authorization header.
+	 * The Authorization header captured by the wp_remote_get stub must contain
+	 * the constant key, not the value from the DB option.
 	 */
 	public function test_api_client_uses_key_constant_over_option(): void {
 		WPTestState::$options['fundraisehub_api_key'] = 'option-api-key';
 		WPTestState::$http_response_queue[]            = WPTestState::http_ok( array() );
 
-		// We cannot inspect headers from the stub directly, but we can confirm
-		// the constant key is used by verifying test_connection() still fires a
-		// real HTTP call (i.e. the client was constructed without error).
 		$client = new ApiClientWithConstantKey();
 		$result = $client->test_connection();
 
-		// A successful (stubbed) response means the client was configured.
 		$this->assertTrue( $result );
+
+		$args = WPTestState::$http_get_args[0] ?? array();
+		$this->assertSame(
+			'Bearer constant-api-key',
+			$args['headers']['Authorization'] ?? '',
+			'Authorization header must use the constant key, not the DB option key'
+		);
 	}
 
 	/**
@@ -165,6 +168,42 @@ class ConstantOverrideTest extends TestCase {
 		$result = $client->test_connection();
 
 		$this->assertTrue( $result );
+
+		$args = WPTestState::$http_get_args[0] ?? array();
+		$this->assertSame(
+			'Bearer explicit-key',
+			$args['headers']['Authorization'] ?? '',
+			'An explicit constructor key must take priority over the constant'
+		);
+	}
+
+	// -------------------------------------------------------------------------
+	// ApiClient – both constants
+	// -------------------------------------------------------------------------
+
+	/**
+	 * When both constants are defined, the constant URL and key are both used.
+	 */
+	public function test_api_client_uses_both_constants_over_options(): void {
+		WPTestState::$options['fundraisehub_api_url'] = 'https://option-url.example.com';
+		WPTestState::$options['fundraisehub_api_key'] = 'option-api-key';
+		WPTestState::$http_response_queue[]            = WPTestState::http_ok( array() );
+
+		$client = new ApiClientWithBothConstants();
+		$client->get( 'campaigns' );
+
+		$this->assertStringContainsString(
+			'constant-url.example.com',
+			WPTestState::$http_get_urls[0],
+			'URL must come from the constant, not the DB option'
+		);
+
+		$args = WPTestState::$http_get_args[0] ?? array();
+		$this->assertSame(
+			'Bearer constant-api-key',
+			$args['headers']['Authorization'] ?? '',
+			'API key must come from the constant, not the DB option'
+		);
 	}
 
 	// -------------------------------------------------------------------------
@@ -189,6 +228,19 @@ class ConstantOverrideTest extends TestCase {
 	}
 
 	/**
+	 * sanitize_api_url() must NOT fall back to the built-in default when the
+	 * option is unset and the URL is env-managed. The constant is authoritative;
+	 * writing an incorrect placeholder to the DB would be misleading.
+	 */
+	public function test_sanitize_api_url_returns_empty_not_default_when_env_managed_and_option_unset(): void {
+		// No stored option – env-managed, so nothing should be written.
+		$settings = new SettingsWithConstantUrl();
+		$result   = $settings->sanitize_api_url( 'https://submitted-url.example.com' );
+
+		$this->assertSame( '', $result );
+	}
+
+	/**
 	 * sanitize_api_url() should sanitize and return the submitted value when no constant is defined.
 	 */
 	public function test_sanitize_api_url_returns_submitted_value_without_constant(): void {
@@ -196,6 +248,28 @@ class ConstantOverrideTest extends TestCase {
 		$result   = $settings->sanitize_api_url( 'https://new-url.example.com' );
 
 		$this->assertSame( 'https://new-url.example.com', $result );
+	}
+
+	// -------------------------------------------------------------------------
+	// Settings – both constants
+	// -------------------------------------------------------------------------
+
+	/**
+	 * When both FUNDRAISEHUB_API_URL and FUNDRAISEHUB_API_KEY are defined,
+	 * both sanitize callbacks must discard submitted values.
+	 */
+	public function test_settings_with_both_constants_discards_all_form_values(): void {
+		WPTestState::$options['fundraisehub_api_url'] = 'https://stored-url.example.com';
+		WPTestState::$options['fundraisehub_api_key'] = 'stored-key';
+
+		$settings = new SettingsWithBothConstants();
+
+		$url_result = $settings->sanitize_api_url( 'https://submitted-url.example.com' );
+		$key_result = $settings->sanitize_api_key( 'submitted-key' );
+
+		$this->assertSame( 'https://stored-url.example.com', $url_result );
+		$this->assertSame( 'stored-key', $key_result );
+		$this->assertSame( 0, WPTestState::$http_get_call_count, 'No HTTP call when both are env-managed' );
 	}
 
 	// -------------------------------------------------------------------------
@@ -384,6 +458,71 @@ class ConstantOverrideTest extends TestCase {
 	public function test_origin_warning_not_shown_when_api_url_not_configured(): void {
 		WPTestState::$current_user_can = true;
 		$_GET['page']                  = 'fundraisehub-settings';
+
+		$settings = new Settings();
+
+		ob_start();
+		$settings->maybe_show_origin_warning();
+		$output = ob_get_clean();
+
+		$this->assertSame( '', $output );
+
+		unset( $_GET['page'] );
+	}
+
+	/**
+	 * When the API URL uses a non-standard port that differs from the site,
+	 * origins are considered different and a warning must appear.
+	 *
+	 * home_url() stub returns 'https://example.org' (port 443 implied).
+	 * API URL 'https://example.org:8443' is on the same host but a different
+	 * port, so a warning should be emitted.
+	 */
+	public function test_origin_warning_shown_for_different_port(): void {
+		WPTestState::$current_user_can               = true;
+		WPTestState::$options['fundraisehub_api_url'] = 'https://example.org:8443';
+		$_GET['page']                                 = 'fundraisehub-settings';
+
+		$settings = new Settings();
+
+		ob_start();
+		$settings->maybe_show_origin_warning();
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'notice-warning', $output );
+
+		unset( $_GET['page'] );
+	}
+
+	/**
+	 * Same scheme, host, and explicit standard port must NOT trigger a warning.
+	 *
+	 * https://example.org:443 and https://example.org are the same origin.
+	 */
+	public function test_origin_warning_not_shown_for_explicit_standard_port(): void {
+		WPTestState::$current_user_can               = true;
+		// home_url() stub returns 'https://example.org'; match with explicit 443.
+		WPTestState::$options['fundraisehub_api_url'] = 'https://example.org:443';
+		$_GET['page']                                 = 'fundraisehub-settings';
+
+		$settings = new Settings();
+
+		ob_start();
+		$settings->maybe_show_origin_warning();
+		$output = ob_get_clean();
+
+		$this->assertSame( '', $output );
+
+		unset( $_GET['page'] );
+	}
+
+	/**
+	 * An unparseable API URL must not cause a false warning to appear.
+	 */
+	public function test_origin_warning_not_shown_when_api_url_is_unparseable(): void {
+		WPTestState::$current_user_can               = true;
+		WPTestState::$options['fundraisehub_api_url'] = '//not-a-full-url';
+		$_GET['page']                                 = 'fundraisehub-settings';
 
 		$settings = new Settings();
 

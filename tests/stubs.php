@@ -103,6 +103,8 @@ class WPTestState {
 	public static int $http_post_call_count = 0;
 	/** @var list<string> URLs requested via wp_remote_get. */
 	public static array $http_get_urls = array();
+	/** @var list<array<string,mixed>> Full args passed to wp_remote_get. */
+	public static array $http_get_args = array();
 	/** @var list<string> URLs requested via wp_remote_post. */
 	public static array $http_post_urls = array();
 	/** @var list<array<string,mixed>> Full args passed to wp_remote_post. */
@@ -147,6 +149,7 @@ class WPTestState {
 		self::$http_get_call_count    = 0;
 		self::$http_post_call_count   = 0;
 		self::$http_get_urls          = array();
+		self::$http_get_args          = array();
 		self::$http_post_urls         = array();
 		self::$http_post_args         = array();
 		self::$settings_errors        = array();
@@ -247,6 +250,7 @@ function delete_transient( string $key ): bool {
 function wp_remote_get( string $url, array $args = array() ): WP_Error|array {
 	WPTestState::$http_get_call_count++;
 	WPTestState::$http_get_urls[] = $url;
+	WPTestState::$http_get_args[] = $args;
 	return WPTestState::dequeue_http_response();
 }
 

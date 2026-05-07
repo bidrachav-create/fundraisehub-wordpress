@@ -181,7 +181,10 @@ class Settings {
 	 */
 	public function sanitize_api_url( mixed $value ): string {
 		if ( $this->is_api_url_env_managed() ) {
-			return (string) get_option( 'fundraisehub_api_url', 'https://app.fundraisehub.com' );
+			// Return whatever is already stored without a fallback default:
+			// the constant is authoritative, so we must not write a potentially
+			// incorrect placeholder value to the database.
+			return (string) get_option( 'fundraisehub_api_url', '' );
 		}
 
 		return esc_url_raw( (string) $value );
@@ -340,8 +343,14 @@ class Settings {
 		}
 
 		$site_url    = home_url();
-		$site_origin = wp_parse_url( $site_url, PHP_URL_SCHEME ) . '://' . wp_parse_url( $site_url, PHP_URL_HOST );
-		$api_origin  = wp_parse_url( $api_url, PHP_URL_SCHEME ) . '://' . wp_parse_url( $api_url, PHP_URL_HOST );
+		$site_origin = $this->parse_origin( $site_url );
+		$api_origin  = $this->parse_origin( $api_url );
+
+		// Bail if either URL could not be reduced to a valid origin (e.g. missing
+		// scheme or host). Showing a false warning is worse than showing none.
+		if ( '' === $site_origin || '' === $api_origin ) {
+			return;
+		}
 
 		// Same origin — no cross-origin issue to warn about.
 		if ( $site_origin === $api_origin ) {
@@ -605,5 +614,44 @@ class Settings {
 	 */
 	private function is_api_key_env_managed(): bool {
 		return '' !== $this->read_api_key_constant();
+	}
+
+	/**
+	 * Reduce a URL to its scheme+host+port origin string.
+	 *
+	 * Returns an empty string when the URL cannot be parsed or is missing a
+	 * scheme or host, which causes the caller to skip the comparison safely.
+	 * Port is included only when it differs from the scheme's default (80 for
+	 * http, 443 for https), matching the browser definition of "origin".
+	 *
+	 * @param string $url Full URL to parse.
+	 *
+	 * @return string Origin string (e.g. "https://example.com" or "https://example.com:8443"), or '' on failure.
+	 */
+	private function parse_origin( string $url ): string {
+		$scheme = (string) ( wp_parse_url( $url, PHP_URL_SCHEME ) ?? '' );
+		$host   = (string) ( wp_parse_url( $url, PHP_URL_HOST ) ?? '' );
+		$port   = wp_parse_url( $url, PHP_URL_PORT );
+		$port   = is_int( $port ) ? $port : null;
+
+		// Cannot determine origin without both scheme and host.
+		if ( '' === $scheme || '' === $host ) {
+			return '';
+		}
+
+		$origin = $scheme . '://' . $host;
+
+		// Append the port only when it differs from the scheme's well-known default.
+		if ( null !== $port ) {
+			$defaults = array(
+				'http'  => 80,
+				'https' => 443,
+			);
+			if ( ! isset( $defaults[ $scheme ] ) || $defaults[ $scheme ] !== $port ) {
+				$origin .= ':' . $port;
+			}
+		}
+
+		return $origin;
 	}
 }
