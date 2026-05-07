@@ -36,8 +36,6 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_block( string $block, array $campaign_data, string $api_url = '' ): string {
-		$campaign_data = self::normalize_campaign_data( $campaign_data );
-
 		switch ( $block ) {
 			case 'campaign-banner':
 				return self::render_banner( $campaign_data );
