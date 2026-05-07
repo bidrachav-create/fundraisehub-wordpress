@@ -62,10 +62,16 @@ class CampaignRendererTest extends TestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * render_block() should return an empty string for an unknown block slug.
+	 * render_block() should return an empty string for an unknown block slug,
+	 * even when typical campaign data is supplied.
 	 */
 	public function test_render_block_returns_empty_for_unknown_block(): void {
-		$html = CampaignRenderer::render_block( 'not-a-block', array() );
+		$campaign = array(
+			'id'   => '1',
+			'name' => 'Campaign',
+			'layout' => array(),
+		);
+		$html = CampaignRenderer::render_block( 'not-a-block', $campaign );
 		$this->assertSame( '', $html );
 	}
 

@@ -176,6 +176,13 @@ $GLOBALS['wpdb'] = new class() {
 	/** @var string */
 	public string $options = 'wp_options';
 
+	/**
+	 * Escapes SQL LIKE special characters (%, _, \) so they can be used
+	 * safely inside a LIKE pattern in a prepared statement.
+	 *
+	 * @param string $text Raw string to escape.
+	 * @return string Escaped string.
+	 */
 	public function esc_like( string $text ): string {
 		return addcslashes( $text, '_%\\' );
 	}
@@ -562,6 +569,14 @@ function get_block_wrapper_attributes( array $extra_attributes = array() ): stri
 // Custom test exceptions thrown instead of redirect/die.
 // ---------------------------------------------------------------------------
 
+/**
+ * Thrown by the wp_safe_redirect() stub to allow test assertions
+ * on redirect targets without reaching the real exit() call.
+ */
 class WPTestRedirectException extends \RuntimeException {}
 
+/**
+ * Thrown by the wp_die() stub to allow test assertions on die messages
+ * without reaching the real exit() call.
+ */
 class WPTestDieException extends \RuntimeException {}
