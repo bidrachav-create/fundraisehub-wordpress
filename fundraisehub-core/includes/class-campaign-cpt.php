@@ -111,8 +111,7 @@ class CampaignCPT {
 			'supports'           => array( 'title', 'editor', 'thumbnail', 'custom-fields' ),
 			// Keep show_in_rest true so the Gutenberg block editor works on campaign
 			// posts. Unauthenticated read access to the REST collection is restricted
-			// via the rest_fundraisehub_campaign_collection_params filter and the
-			// rest_pre_dispatch hook registered in ::register().
+			// via the rest_pre_dispatch hook registered in ::register().
 			'show_in_rest'       => true,
 		);
 

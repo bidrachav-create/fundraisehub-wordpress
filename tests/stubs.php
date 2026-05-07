@@ -115,6 +115,8 @@ class WPTestState {
 	public static bool $flushed_rewrite_rules = false;
 	/** @var bool Return value for current_user_can(). */
 	public static bool $current_user_can = false;
+	/** @var bool Return value for is_user_logged_in(). */
+	public static bool $is_user_logged_in = false;
 	/** @var bool Return value for wp_using_ext_object_cache(). */
 	public static bool $using_ext_object_cache = false;
 
@@ -151,6 +153,7 @@ class WPTestState {
 		self::$last_redirect          = null;
 		self::$flushed_rewrite_rules  = false;
 		self::$current_user_can       = false;
+		self::$is_user_logged_in      = false;
 		self::$using_ext_object_cache = false;
 	}
 
@@ -474,7 +477,7 @@ function current_user_can( string $capability, mixed ...$args ): bool {
 }
 
 function is_user_logged_in(): bool {
-	return WPTestState::$current_user_can;
+	return WPTestState::$is_user_logged_in;
 }
 
 // ---------------------------------------------------------------------------
