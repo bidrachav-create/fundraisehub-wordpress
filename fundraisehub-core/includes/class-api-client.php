@@ -48,9 +48,11 @@ class ApiClient {
 	/**
 	 * Constructor.
 	 *
-	 * Reads connection settings from wp_options when explicit values are not
-	 * provided. The URL defaults to https://app.fundraisehub.com when the
-	 * option has not been saved yet.
+	 * Resolution order for both values:
+	 *   1. Explicit constructor argument (highest priority).
+	 *   2. PHP constant (FUNDRAISEHUB_API_URL / FUNDRAISEHUB_API_KEY).
+	 *   3. WordPress option stored in the database.
+	 *   4. Built-in default (URL only).
 	 *
 	 * @param string $base_url Base URL of the remote API (no trailing slash).
 	 * @param string $api_key  API key / token.
@@ -59,17 +61,54 @@ class ApiClient {
 		if ( '' !== $base_url ) {
 			$resolved_url = $base_url;
 		} else {
-			$resolved_url = (string) get_option( 'fundraisehub_api_url', '' );
+			$constant_url = $this->read_api_url_constant();
+			if ( '' !== $constant_url ) {
+				$resolved_url = $constant_url;
+			} else {
+				$resolved_url = (string) get_option( 'fundraisehub_api_url', '' );
 
-			// Fall back to the legacy option key used before the rename so that
-			// existing installs do not silently revert to the default URL.
-			if ( '' === $resolved_url ) {
-				$resolved_url = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
+				// Fall back to the legacy option key used before the rename so that
+				// existing installs do not silently revert to the default URL.
+				if ( '' === $resolved_url ) {
+					$resolved_url = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
+				}
 			}
 		}
 
 		$this->base_url = rtrim( $resolved_url, '/' );
-		$this->api_key  = $api_key ? $api_key : (string) get_option( 'fundraisehub_api_key', '' );
+
+		if ( '' !== $api_key ) {
+			$this->api_key = $api_key;
+		} else {
+			$constant_key  = $this->read_api_key_constant();
+			$this->api_key = '' !== $constant_key
+				? $constant_key
+				: (string) get_option( 'fundraisehub_api_key', '' );
+		}
+	}
+
+	/**
+	 * Return the value of the FUNDRAISEHUB_API_URL constant, or '' if not defined.
+	 *
+	 * Extracted into a protected method so tests can override it via a subclass
+	 * without needing to (re-)define a PHP constant.
+	 *
+	 * @return string
+	 */
+	protected function read_api_url_constant(): string {
+		return defined( 'FUNDRAISEHUB_API_URL' ) ? (string) FUNDRAISEHUB_API_URL : '';
+	}
+
+	/**
+	 * Return the value of the FUNDRAISEHUB_API_KEY constant, or '' if not defined.
+	 *
+	 * Extracted into a protected method so tests can override it via a subclass
+	 * without needing to (re-)define a PHP constant.
+	 *
+	 * @return string
+	 */
+	protected function read_api_key_constant(): string {
+		return defined( 'FUNDRAISEHUB_API_KEY' ) ? (string) FUNDRAISEHUB_API_KEY : '';
 	}
 
 	/**
