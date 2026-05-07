@@ -93,7 +93,7 @@ Automatically once per day via WP-Cron. You can also trigger an immediate refres
 
 = The donation form does not load or shows a CORS error. =
 
-Make sure the **Allowed Origin** in FundRaiseHub (**Settings → WordPress Connections**) is set to your WordPress site's exact origin (scheme + host, no trailing slash), e.g. `https://example.org`.
+Make sure the **Allowed Origin** in FundRaiseHub (**Settings → WordPress Connections**) is set to your WordPress site's exact origin (`scheme://host[:port]`, no path or trailing slash), e.g. `https://example.org` or `https://example.org:8443`. The plugin normalizes `home_url()` to this origin format when sending `Origin` and `X-FundraiseHub-Site-Origin` headers.
 
 = Does the plugin store donor data? =
 

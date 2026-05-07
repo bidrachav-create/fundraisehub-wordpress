@@ -22,6 +22,8 @@ if ( ! is_array( $campaign_data ) ) {
 	return;
 }
 
+$campaign_data = \FundRaiseHub\Core\CampaignSync::normalize_campaign_payload( $campaign_data );
+
 $layout    = $campaign_data['layout'] ?? array();
 $block_cfg = $layout['honor_scroll'] ?? array();
 
@@ -45,13 +47,13 @@ if ( empty( $donors ) ) {
 	<ul class="fundraisehub-campaign-honor-scroll__list">
 		<?php
 		foreach ( $donors as $donor ) :
-			$name   = esc_html( (string) ( $donor['name'] ?? $donor['donor_name'] ?? __( 'Anonymous', 'fundraisehub-core' ) ) );
-			$amount = (float) ( $donor['amount'] ?? 0 );
+			$name   = esc_html( \FundRaiseHub\Core\CampaignRenderer::donor_display_name( $donor ) );
+			$amount = \FundRaiseHub\Core\CampaignRenderer::parse_amount( $donor['amount'] ?? 0 );
 			?>
 			<li class="fundraisehub-campaign-honor-scroll__item">
 				<span class="fundraisehub-campaign-honor-scroll__name"><?php echo $name; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already escaped ?></span>
 				<?php if ( $amount > 0 ) : ?>
-					<span class="fundraisehub-campaign-honor-scroll__amount"><?php echo esc_html( '$' . number_format( $amount, 2 ) ); ?></span>
+					<span class="fundraisehub-campaign-honor-scroll__amount"><?php echo esc_html( \FundRaiseHub\Core\CampaignRenderer::format_money( $amount, $campaign_data ) ); ?></span>
 				<?php endif; ?>
 			</li>
 		<?php endforeach; ?>
