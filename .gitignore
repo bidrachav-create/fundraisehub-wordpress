@@ -37,3 +37,6 @@ wp-content/
 # Zip distributions
 dist/
 *.zip
+
+# PHPUnit runtime cache – machine-generated, changes on every run
+.phpunit.result.cache
