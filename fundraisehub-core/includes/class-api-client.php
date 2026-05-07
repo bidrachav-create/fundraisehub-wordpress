@@ -299,11 +299,45 @@ class ApiClient {
 			'Accept' => 'application/json',
 		);
 
+		$site_origin = $this->get_site_origin_header_value();
+		if ( '' !== $site_origin ) {
+			$headers['Origin']                     = $site_origin;
+			$headers['X-FundraiseHub-Site-Origin'] = $site_origin;
+		}
+
 		if ( '' !== $this->api_key ) {
 			$headers['Authorization'] = 'Bearer ' . $this->api_key;
 		}
 
 		return $headers;
+	}
+
+	/**
+	 * Build a deterministic site origin value for backend request headers.
+	 *
+	 * @return string
+	 */
+	private function get_site_origin_header_value(): string {
+		$home_url = (string) home_url();
+		if ( '' === $home_url ) {
+			return '';
+		}
+
+		$scheme = (string) wp_parse_url( $home_url, PHP_URL_SCHEME );
+		$host   = (string) wp_parse_url( $home_url, PHP_URL_HOST );
+		$port   = wp_parse_url( $home_url, PHP_URL_PORT );
+
+		if ( '' === $scheme || '' === $host ) {
+			return '';
+		}
+
+		$origin = $scheme . '://' . $host;
+
+		if ( is_int( $port ) && $port > 0 ) {
+			$origin .= ':' . $port;
+		}
+
+		return $origin;
 	}
 
 	/**

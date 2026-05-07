@@ -478,4 +478,19 @@ class ApiClientTest extends TestCase {
 
 		$this->assertIsArray( $result );
 	}
+
+	/**
+	 * get() should include deterministic site-origin headers for backend checks.
+	 */
+	public function test_get_sends_site_origin_headers(): void {
+		WPTestState::$http_response_queue[] = WPTestState::http_ok( array() );
+
+		$client = new ApiClient( 'https://api.fundraisehub.com', 'my-secret-key' );
+		$client->get( 'campaigns' );
+
+		$headers = WPTestState::$http_get_args[0]['headers'] ?? array();
+
+		$this->assertSame( 'https://example.org', $headers['Origin'] ?? '' );
+		$this->assertSame( 'https://example.org', $headers['X-FundraiseHub-Site-Origin'] ?? '' );
+	}
 }

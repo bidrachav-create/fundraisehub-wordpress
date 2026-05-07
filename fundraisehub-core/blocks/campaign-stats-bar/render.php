@@ -30,8 +30,7 @@ if ( empty( $block_cfg['enabled'] ) ) {
 }
 
 $amount_raised = number_format( (float) ( $campaign_data['amount_raised'] ?? $campaign_data['raised'] ?? 0 ), 2 );
-$donors_raw    = $campaign_data['donor_count'] ?? $campaign_data['donors'] ?? 0;
-$donor_count   = is_array( $donors_raw ) ? count( $donors_raw ) : (int) $donors_raw;
+$donor_count   = (int) ( $campaign_data['donor_count'] ?? $campaign_data['donorCount'] ?? $campaign_data['totalDonors'] ?? $campaign_data['total_donors'] ?? $campaign_data['donorsCount'] ?? 0 );
 $goal_amount   = number_format( (float) ( $campaign_data['goal_amount'] ?? $campaign_data['goal'] ?? 0 ), 2 );
 
 ?>

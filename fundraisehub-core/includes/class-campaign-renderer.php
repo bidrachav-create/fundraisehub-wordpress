@@ -64,6 +64,21 @@ class CampaignRenderer {
 		}
 	}
 
+	/**
+	 * Normalize campaign payload variants into render-ready field names.
+	 *
+	 * @param mixed[] $campaign_data Campaign payload.
+	 *
+	 * @return mixed[]
+	 */
+	private static function normalize_campaign_data( array $campaign_data ): array {
+		if ( isset( $campaign_data['data'] ) && is_array( $campaign_data['data'] ) ) {
+			$campaign_data = $campaign_data['data'];
+		}
+
+		return CampaignSync::normalize_campaign_payload( $campaign_data );
+	}
+
 	// -------------------------------------------------------------------------
 	// Per-block render methods
 	// -------------------------------------------------------------------------
@@ -76,6 +91,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_banner( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['banner'] ?? array();
 
@@ -111,6 +128,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_stats_bar( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['stats_bar'] ?? array();
 
@@ -119,8 +138,7 @@ class CampaignRenderer {
 		}
 
 		$amount_raised = number_format( (float) ( $campaign_data['amount_raised'] ?? $campaign_data['raised'] ?? 0 ), 2 );
-		$donors_raw    = $campaign_data['donor_count'] ?? $campaign_data['donors'] ?? 0;
-		$donor_count   = is_array( $donors_raw ) ? count( $donors_raw ) : (int) $donors_raw;
+		$donor_count   = (int) ( $campaign_data['donor_count'] ?? $campaign_data['donorCount'] ?? $campaign_data['totalDonors'] ?? $campaign_data['total_donors'] ?? $campaign_data['donorsCount'] ?? 0 );
 		$goal_amount   = number_format( (float) ( $campaign_data['goal_amount'] ?? $campaign_data['goal'] ?? 0 ), 2 );
 
 		ob_start();
@@ -151,6 +169,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_thermometer( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['thermometer'] ?? array();
 
@@ -202,6 +222,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_description( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['description'] ?? array();
 
@@ -233,6 +255,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_donate_button( array $campaign_data, string $api_url = '' ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['donate_button'] ?? array();
 
@@ -292,6 +316,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_donation_tiles( array $campaign_data, string $api_url = '' ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['donation_tiles'] ?? array();
 
@@ -363,6 +389,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_honor_scroll( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['honor_scroll'] ?? array();
 
@@ -411,6 +439,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_teams( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['teams'] ?? array();
 
@@ -456,6 +486,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_video( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['video'] ?? array();
 
@@ -492,6 +524,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_photo_gallery( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['photo_gallery'] ?? array();
 
@@ -551,6 +585,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_comments( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['comments'] ?? array();
 
