@@ -22,6 +22,7 @@ DIST_DIR="${REPO_ROOT}/dist"
 BUILD_CORE=true
 BUILD_ELEMENTOR=true
 SKIP_BUILD=false
+CREATED_ZIPS=()
 
 # Parse flags.
 for arg in "$@"; do
@@ -87,6 +88,7 @@ package_plugin() {
   echo "==> Creating ${zip_name}…"
   mkdir -p "${DIST_DIR}"
   (cd "${staging}" && zip -r -q "${DIST_DIR}/${zip_name}" "${slug}/")
+  CREATED_ZIPS+=("${DIST_DIR}/${zip_name}")
 
   rm -rf "${staging}"
   echo "==> Created: dist/${zip_name}"
@@ -107,5 +109,5 @@ if [ "$BUILD_ELEMENTOR" = true ]; then
 fi
 
 echo ""
-echo "Done. ZIP files are in: ${DIST_DIR}/"
-ls -lh "${DIST_DIR}/"
+echo "Done. Install one of these ZIP files in WordPress via Plugins -> Add New -> Upload Plugin:"
+printf '  %s\n' "${CREATED_ZIPS[@]}"

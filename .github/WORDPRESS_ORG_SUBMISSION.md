@@ -6,7 +6,12 @@ This document covers how to build distributable ZIPs and publish both FundRaiseH
 
 ## Generating the ZIP packages
 
-Run the build script from the repo root. It compiles JS assets, then packages each plugin into a clean ZIP under `dist/`, excluding all dev artefacts (`node_modules`, `vendor`, block source JS, `tests/`, dev config files).
+Run the build script from the repo root. It compiles JS assets, then packages each plugin into a clean ZIP under `dist/`, excluding all dev artefacts (`node_modules`, `vendor`, block source JS, `tests/`, dev config files). After it finishes, installable ZIPs will be in:
+
+```text
+dist/fundraisehub-core-{version}.zip
+dist/fundraisehub-elementor-{version}.zip
+```
 
 ```bash
 # Full build (compiles JS then packages both plugins):
@@ -20,11 +25,12 @@ bash bin/build-zip.sh --core-only
 bash bin/build-zip.sh --elementor-only
 ```
 
-Output:
+The script ends by printing the installable ZIP paths, for example:
 
-```
-dist/fundraisehub-core-{version}.zip
-dist/fundraisehub-elementor-{version}.zip
+```text
+Done. Install one of these ZIP files in WordPress via Plugins -> Add New -> Upload Plugin:
+  /path/to/repo/dist/fundraisehub-core-1.0.0.zip
+  /path/to/repo/dist/fundraisehub-elementor-1.0.0.zip
 ```
 
 ---

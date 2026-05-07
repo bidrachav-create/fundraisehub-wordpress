@@ -44,6 +44,19 @@ Both plugins require an active FundRaiseHub account and an API key scoped to you
 
 ## Installation
 
+### Install from a ZIP package
+
+If you want an installable plugin ZIP instead of copying the plugin folders manually, build it from the repo root:
+
+```bash
+bash bin/build-zip.sh
+```
+
+When the script finishes, upload one of these files in **WordPress → Plugins → Add New → Upload Plugin**:
+
+- `dist/fundraisehub-core-{version}.zip`
+- `dist/fundraisehub-elementor-{version}.zip`
+
 ### FundRaiseHub Core (required)
 
 1. Download or clone this repository.
