@@ -30,7 +30,7 @@ if ( ! defined( 'DAY_IN_SECONDS' ) ) {
 // ---------------------------------------------------------------------------
 // WP_Error class stub.
 // ---------------------------------------------------------------------------
-if ( ! class_exists( 'WP_Error' ) ) {
+if ( ! class_exists( 'WP_Error', false ) ) {
 	/**
 	 * Minimal WP_Error stub.
 	 */
@@ -339,7 +339,17 @@ function sanitize_title( string $title, string $fallback_title = '', string $con
 
 function wp_unslash( string|array $value ): string|array {
 	if ( is_array( $value ) ) {
-		return array_map( 'stripslashes_deep', $value );
+		// Recursively strip slashes from every element without relying on
+		// WordPress's stripslashes_deep() helper which is not stubbed here.
+		return array_map(
+			function ( mixed $item ): mixed {
+				if ( is_array( $item ) ) {
+					return wp_unslash( $item );
+				}
+				return is_string( $item ) ? stripslashes( $item ) : $item;
+			},
+			$value
+		);
 	}
 	return stripslashes( $value );
 }
@@ -463,6 +473,18 @@ function current_user_can( string $capability, mixed ...$args ): bool {
 	return WPTestState::$current_user_can;
 }
 
+function is_user_logged_in(): bool {
+	return WPTestState::$current_user_can;
+}
+
+// ---------------------------------------------------------------------------
+// REST API helpers.
+// ---------------------------------------------------------------------------
+
+function rest_authorization_required_code(): int {
+	return 401;
+}
+
 // ---------------------------------------------------------------------------
 // Object cache.
 // ---------------------------------------------------------------------------
@@ -563,6 +585,35 @@ function wp_oembed_get( string $url, array $args = array() ): string|false {
 function get_block_wrapper_attributes( array $extra_attributes = array() ): string {
 	$class = $extra_attributes['class'] ?? '';
 	return $class ? 'class="' . htmlspecialchars( $class, ENT_QUOTES ) . '"' : '';
+}
+
+// ---------------------------------------------------------------------------
+// WordPress REST API class stubs – used as type hints in CampaignCPT.
+// ---------------------------------------------------------------------------
+
+if ( ! class_exists( 'WP_REST_Server', false ) ) {
+	/** Minimal WP_REST_Server stub. */
+	class WP_REST_Server {}
+}
+
+if ( ! class_exists( 'WP_REST_Request', false ) ) {
+	/** Minimal WP_REST_Request stub. */
+	class WP_REST_Request {
+		/** @var string */
+		private string $route = '/';
+
+		/**
+		 * @param string $route The request route.
+		 */
+		public function set_route( string $route ): void {
+			$this->route = $route;
+		}
+
+		/** @return string */
+		public function get_route(): string {
+			return $this->route;
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------

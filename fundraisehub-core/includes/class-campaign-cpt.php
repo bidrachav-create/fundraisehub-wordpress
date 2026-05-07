@@ -29,6 +29,45 @@ class CampaignCPT {
 	 */
 	public function register(): void {
 		add_action( 'init', array( $this, 'register_post_type' ) );
+		// Prevent unauthenticated reads of the mirrored campaign data via the
+		// standard WP REST endpoint (/wp-json/wp/v2/fundraisehub_campaign).
+		// The CPT must have show_in_rest=true for Gutenberg to work, but we do
+		// not want the raw synced snapshot to be publicly consumable as an API.
+		add_filter( 'rest_pre_dispatch', array( $this, 'restrict_unauthenticated_rest_access' ), 10, 3 );
+	}
+
+	/**
+	 * Restrict unauthenticated access to the CPT's standard WP REST endpoint.
+	 *
+	 * The CPT stores a read-only snapshot of remote API data. Allowing public
+	 * consumption of /wp-json/wp/v2/fundraisehub_campaign would expose stale
+	 * cached data as if it were a live API. Authenticated users (editors,
+	 * admins) retain full access so Gutenberg continues to work.
+	 *
+	 * @param mixed            $result  Short-circuit result (null = proceed normally).
+	 * @param \WP_REST_Server  $server  REST server instance.
+	 * @param \WP_REST_Request $request Incoming request.
+	 * @return mixed Original $result, or WP_Error for unauthenticated CPT requests.
+	 */
+	public function restrict_unauthenticated_rest_access( mixed $result, \WP_REST_Server $server, \WP_REST_Request $request ): mixed {
+		if ( null !== $result ) {
+			return $result;
+		}
+
+		$route = $request->get_route();
+		if ( ! str_contains( $route, '/wp/v2/' . self::POST_TYPE ) ) {
+			return $result;
+		}
+
+		if ( ! is_user_logged_in() ) {
+			return new \WP_Error(
+				'rest_forbidden',
+				__( 'The FundRaiseHub campaign REST endpoint is not available to unauthenticated requests.', 'fundraisehub-core' ),
+				array( 'status' => rest_authorization_required_code() )
+			);
+		}
+
+		return $result;
 	}
 
 	/**
@@ -58,10 +97,6 @@ class CampaignCPT {
 
 		$args = array(
 			'labels'             => $labels,
-			// The CPT is public so individual campaign pages are front-end accessible,
-			// but we intentionally omit standard REST exposure because the data is
-			// read-only (synced from the remote API) and the WP REST API would return
-			// stale cached snapshots rather than live FundRaiseHub data.
 			'public'             => true,
 			'publicly_queryable' => true,
 			'show_ui'            => true,
@@ -74,10 +109,11 @@ class CampaignCPT {
 			'menu_position'      => 20,
 			'menu_icon'          => 'dashicons-heart',
 			'supports'           => array( 'title', 'editor', 'thumbnail', 'custom-fields' ),
-			// Disabled: the CPT mirrors remote API data and must not be exposed via
-			// the WordPress REST API to avoid stale or duplicate data surfacing on
-			// /wp-json/wp/v2/fundraisehub_campaign.
-			'show_in_rest'       => false,
+			// Keep show_in_rest true so the Gutenberg block editor works on campaign
+			// posts. Unauthenticated read access to the REST collection is restricted
+			// via the rest_fundraisehub_campaign_collection_params filter and the
+			// rest_pre_dispatch hook registered in ::register().
+			'show_in_rest'       => true,
 		);
 
 		register_post_type( self::POST_TYPE, $args );
