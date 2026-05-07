@@ -122,23 +122,23 @@ class CampaignRenderer {
 			$last_dot   = strrpos( $normalized, '.' );
 
 			if ( false !== $last_comma && false !== $last_dot && $last_comma > $last_dot ) {
-				// European style: 1.250,75
+				// European style: 1.250,75.
 				$normalized = str_replace( '.', '', $normalized );
 				$normalized = str_replace( ',', '.', $normalized );
 			} else {
-				// US/UK style: 1,250.75
+				// US/UK style: 1,250.75.
 				$normalized = str_replace( ',', '', $normalized );
 			}
 		} elseif ( str_contains( $normalized, ',' ) ) {
 			if ( 1 === preg_match( '/^-?\d{1,3}(,\d{3})+$/', $normalized ) ) {
-				// Thousands grouping only: 1,250
+				// Thousands grouping only: 1,250.
 				$normalized = str_replace( ',', '', $normalized );
 			} else {
-				// Decimal comma: 1,25
+				// Decimal comma: 1,25.
 				$normalized = str_replace( ',', '.', $normalized );
 			}
 		} elseif ( str_contains( $normalized, '.' ) && 1 === preg_match( '/^-?\d{1,3}(\.\d{3})+$/', $normalized ) ) {
-			// Thousands grouping only with dot: 1.250
+			// Thousands grouping only with dot: 1.250.
 			$normalized = str_replace( '.', '', $normalized );
 		}
 
