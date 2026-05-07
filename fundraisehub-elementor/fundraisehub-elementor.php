@@ -13,6 +13,8 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       fundraisehub-elementor
  * Domain Path:       /languages
+ *
+ * @package FundRaiseHub_Elementor
  */
 
 declare( strict_types=1 );

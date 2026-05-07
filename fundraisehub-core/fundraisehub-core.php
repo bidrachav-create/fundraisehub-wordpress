@@ -12,6 +12,8 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       fundraisehub-core
  * Domain Path:       /languages
+ *
+ * @package FundRaiseHub_Core
  */
 
 declare( strict_types=1 );
@@ -46,9 +48,9 @@ $includes = array(
 );
 
 foreach ( $includes as $file ) {
-	$path = FUNDRAISEHUB_CORE_DIR . $file;
-	if ( file_exists( $path ) ) {
-		require_once $path;
+	$include_path = FUNDRAISEHUB_CORE_DIR . $file;
+	if ( file_exists( $include_path ) ) {
+		require_once $include_path;
 	}
 }
 
