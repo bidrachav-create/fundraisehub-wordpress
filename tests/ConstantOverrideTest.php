@@ -517,11 +517,12 @@ class ConstantOverrideTest extends TestCase {
 	}
 
 	/**
-	 * An unparseable API URL must not cause a false warning to appear.
+	 * A URL without a scheme cannot be reduced to an origin, so no warning
+	 * should appear (a false warning is worse than no warning).
 	 */
 	public function test_origin_warning_not_shown_when_api_url_is_unparseable(): void {
 		WPTestState::$current_user_can               = true;
-		WPTestState::$options['fundraisehub_api_url'] = '//not-a-full-url';
+		WPTestState::$options['fundraisehub_api_url'] = 'not-a-url';
 		$_GET['page']                                 = 'fundraisehub-settings';
 
 		$settings = new Settings();

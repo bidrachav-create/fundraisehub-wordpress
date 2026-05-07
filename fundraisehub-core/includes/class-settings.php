@@ -30,6 +30,12 @@ class Settings {
 	/** Admin-post action for the Sync Now button (handled by CampaignSync). */
 	private const SYNC_ACTION = 'fundraisehub_sync';
 
+	/** Well-known default ports used by parse_origin() to normalise URLs. */
+	private const DEFAULT_PORTS = array(
+		'http'  => 80,
+		'https' => 443,
+	);
+
 	/**
 	 * Hook everything into WordPress.
 	 */
@@ -643,11 +649,7 @@ class Settings {
 
 		// Append the port only when it differs from the scheme's well-known default.
 		if ( null !== $port ) {
-			$defaults = array(
-				'http'  => 80,
-				'https' => 443,
-			);
-			if ( ! isset( $defaults[ $scheme ] ) || $defaults[ $scheme ] !== $port ) {
+			if ( ! isset( self::DEFAULT_PORTS[ $scheme ] ) || self::DEFAULT_PORTS[ $scheme ] !== $port ) {
 				$origin .= ':' . $port;
 			}
 		}
