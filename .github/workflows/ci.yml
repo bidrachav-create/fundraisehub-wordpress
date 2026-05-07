@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   php:
     name: PHP (phpcs + phpunit)
@@ -29,7 +32,7 @@ jobs:
         run: composer run test
 
   js:
-    name: JavaScript (build + lint)
+    name: JavaScript (build)
     runs-on: ubuntu-latest
 
     steps:
@@ -48,10 +51,26 @@ jobs:
       - name: Build assets
         run: npm run build
 
+  js-lint-advisory:
+    name: JavaScript/CSS Lint (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci
+
       - name: Lint JavaScript
-        continue-on-error: true
         run: npm run lint:js -- "fundraisehub-core/blocks/**/*.js" "fundraisehub-core/js/**/*.js"
 
       - name: Lint CSS
-        continue-on-error: true
         run: npm run lint:css -- --allow-empty-input "fundraisehub-core/blocks/**/*.css" "fundraisehub-core/css/**/*.css"
