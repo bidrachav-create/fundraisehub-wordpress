@@ -36,6 +36,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_block( string $block, array $campaign_data, string $api_url = '' ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		switch ( $block ) {
 			case 'campaign-banner':
 				return self::render_banner( $campaign_data );
@@ -64,6 +66,67 @@ class CampaignRenderer {
 		}
 	}
 
+	/**
+	 * Normalize campaign payload variants into render-ready field names.
+	 *
+	 * @param mixed[] $campaign_data Campaign payload.
+	 *
+	 * @return mixed[]
+	 */
+	private static function normalize_campaign_data( array $campaign_data ): array {
+		if ( isset( $campaign_data['campaign'] ) && is_array( $campaign_data['campaign'] ) ) {
+			$base = $campaign_data['campaign'];
+
+			foreach ( array( 'layout', 'teams', 'ambassadors', 'comments', 'media', 'recentDonations', 'recent_donations' ) as $related_key ) {
+				if ( isset( $campaign_data[ $related_key ] ) && is_array( $campaign_data[ $related_key ] ) ) {
+					$base[ $related_key ] = $campaign_data[ $related_key ];
+				}
+			}
+
+			$campaign_data = $base;
+		}
+
+		$campaign_id = $campaign_data['id'] ?? $campaign_data['campaignId'] ?? $campaign_data['campaign_id'] ?? '';
+		if ( '' !== (string) $campaign_id ) {
+			$campaign_data['id'] = (string) $campaign_id;
+		}
+
+		$name = $campaign_data['name'] ?? $campaign_data['title'] ?? $campaign_data['campaignName'] ?? '';
+		if ( '' !== (string) $name ) {
+			$campaign_data['name']  = (string) $name;
+			$campaign_data['title'] = (string) $name;
+		}
+
+		$campaign_data['amount_raised'] = (float) ( $campaign_data['amount_raised'] ?? $campaign_data['amountRaised'] ?? $campaign_data['raised'] ?? 0 );
+		$campaign_data['raised']        = (float) $campaign_data['amount_raised'];
+		$campaign_data['goal_amount']   = (float) ( $campaign_data['goal_amount'] ?? $campaign_data['goalAmount'] ?? $campaign_data['goal'] ?? 0 );
+		$campaign_data['goal']          = (float) $campaign_data['goal_amount'];
+
+		$recent_donations = $campaign_data['recentDonations'] ?? $campaign_data['recent_donations'] ?? $campaign_data['donors'] ?? array();
+		if ( is_array( $recent_donations ) ) {
+			$campaign_data['recentDonations'] = $recent_donations;
+			$campaign_data['recent_donors']   = $recent_donations;
+			$campaign_data['donors']          = $recent_donations;
+		}
+
+		$donor_count = $campaign_data['donor_count'] ?? $campaign_data['donorCount'] ?? null;
+		if ( null === $donor_count && is_array( $recent_donations ) ) {
+			$donor_count = count( $recent_donations );
+		}
+		if ( null !== $donor_count ) {
+			$campaign_data['donor_count'] = (int) $donor_count;
+		}
+
+		$campaign_data['donation_amounts'] = $campaign_data['donation_amounts'] ?? $campaign_data['donationAmounts'] ?? array();
+		$campaign_data['banner_url']       = $campaign_data['banner_url'] ?? $campaign_data['bannerUrl'] ?? $campaign_data['banner_image'] ?? $campaign_data['bannerImage'] ?? '';
+		$campaign_data['video_url']        = $campaign_data['video_url'] ?? $campaign_data['videoUrl'] ?? $campaign_data['video'] ?? '';
+		$campaign_data['gallery_images']   = $campaign_data['gallery_images'] ?? $campaign_data['galleryImages'] ?? $campaign_data['media'] ?? $campaign_data['images'] ?? array();
+		$campaign_data['images']           = $campaign_data['images'] ?? $campaign_data['gallery_images'];
+		$campaign_data['url']              = $campaign_data['url'] ?? $campaign_data['publicUrl'] ?? $campaign_data['public_url'] ?? $campaign_data['campaignUrl'] ?? '';
+
+		return $campaign_data;
+	}
+
 	// -------------------------------------------------------------------------
 	// Per-block render methods
 	// -------------------------------------------------------------------------
@@ -76,6 +139,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_banner( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['banner'] ?? array();
 
@@ -111,6 +176,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_stats_bar( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['stats_bar'] ?? array();
 
@@ -151,6 +218,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_thermometer( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['thermometer'] ?? array();
 
@@ -202,6 +271,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_description( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['description'] ?? array();
 
@@ -233,6 +304,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_donate_button( array $campaign_data, string $api_url = '' ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['donate_button'] ?? array();
 
@@ -292,6 +365,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_donation_tiles( array $campaign_data, string $api_url = '' ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['donation_tiles'] ?? array();
 
@@ -363,6 +438,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_honor_scroll( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['honor_scroll'] ?? array();
 
@@ -411,6 +488,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_teams( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['teams'] ?? array();
 
@@ -456,6 +535,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_video( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['video'] ?? array();
 
@@ -492,6 +573,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_photo_gallery( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['photo_gallery'] ?? array();
 
@@ -551,6 +634,8 @@ class CampaignRenderer {
 	 * @return string Rendered HTML.
 	 */
 	public static function render_comments( array $campaign_data ): string {
+		$campaign_data = self::normalize_campaign_data( $campaign_data );
+
 		$layout    = $campaign_data['layout'] ?? array();
 		$block_cfg = $layout['comments'] ?? array();
 

@@ -144,12 +144,7 @@ class CampaignSync {
 			return $response;
 		}
 
-		// Normalise: single-campaign endpoint may return { data: {...} } or a plain array.
-		$campaign = $response['data'] ?? $response;
-
-		if ( ! is_array( $campaign ) ) {
-			$campaign = array();
-		}
+		$campaign = $this->normalize_campaign_detail_response( $response );
 
 		set_transient( $transient_key, $campaign, self::CACHE_TTL );
 
@@ -195,12 +190,7 @@ class CampaignSync {
 			return $response;
 		}
 
-		// API may return { data: [...] } or a plain array.
-		$campaigns = $response['data'] ?? $response;
-
-		if ( ! is_array( $campaigns ) ) {
-			$campaigns = array();
-		}
+		$campaigns = $this->normalize_campaign_list_response( $response );
 
 		set_transient( $transient_key, $campaigns, self::CACHE_TTL );
 
@@ -234,11 +224,14 @@ class CampaignSync {
 				break;
 			}
 
-			// API may return { data: [...], meta: { total_pages: N } } or a plain array.
-			$campaigns = $response['data'] ?? $response;
+			$campaigns = $this->normalize_campaign_list_response( $response );
 
 			if ( isset( $response['meta']['total_pages'] ) ) {
 				$total_pages = (int) $response['meta']['total_pages'];
+			} elseif ( isset( $response['pagination']['totalPages'] ) ) {
+				$total_pages = (int) $response['pagination']['totalPages'];
+			} elseif ( isset( $response['pagination']['total_pages'] ) ) {
+				$total_pages = (int) $response['pagination']['total_pages'];
 			}
 
 			if ( ! is_array( $campaigns ) || empty( $campaigns ) ) {
@@ -246,15 +239,17 @@ class CampaignSync {
 			}
 
 			foreach ( $campaigns as $campaign ) {
-				if ( empty( $campaign['id'] ) ) {
+				$campaign_id = (string) ( $campaign['id'] ?? '' );
+				if ( '' === $campaign_id ) {
 					continue;
 				}
 
-				$this->upsert_campaign_post( $campaign );
+				$campaign_detail = $this->get_campaign( $campaign_id );
+				if ( is_wp_error( $campaign_detail ) || empty( $campaign_detail['id'] ) ) {
+					$campaign_detail = $campaign;
+				}
 
-				// Refresh the individual campaign transient.
-				$transient_key = self::CAMPAIGN_TRANSIENT_PREFIX . sanitize_key( (string) $campaign['id'] );
-				set_transient( $transient_key, $campaign, self::CACHE_TTL );
+				$this->upsert_campaign_post( $campaign_detail );
 			}
 
 			++$page;
@@ -285,7 +280,7 @@ class CampaignSync {
 			return $response;
 		}
 
-		$campaign = $response['data'] ?? $response;
+		$campaign = $this->normalize_campaign_detail_response( $response );
 
 		if ( ! is_array( $campaign ) || empty( $campaign['id'] ) ) {
 			return new \WP_Error(
@@ -390,12 +385,179 @@ class CampaignSync {
 		update_post_meta( $post_id, self::META_CAMPAIGN_ID, $remote_id );
 		update_post_meta( $post_id, self::META_CAMPAIGN_DATA, $json );
 		update_post_meta( $post_id, self::META_CAMPAIGN_HASH, $hash );
-		update_post_meta( $post_id, self::META_ORG_SLUG, (string) ( $campaign['org_slug'] ?? $campaign['organisation_slug'] ?? '' ) );
-		update_post_meta( $post_id, self::META_CAMPAIGN_SLUG, (string) ( $campaign['slug'] ?? $campaign['campaign_slug'] ?? '' ) );
-		update_post_meta( $post_id, self::META_CAMPAIGN_TYPE, (string) ( $campaign['type'] ?? $campaign['campaign_type'] ?? '' ) );
+		update_post_meta( $post_id, self::META_ORG_SLUG, (string) ( $campaign['org_slug'] ?? $campaign['orgSlug'] ?? $campaign['organization_slug'] ?? $campaign['organisation_slug'] ?? '' ) );
+		update_post_meta( $post_id, self::META_CAMPAIGN_SLUG, (string) ( $campaign['slug'] ?? $campaign['campaign_slug'] ?? $campaign['campaignSlug'] ?? '' ) );
+		update_post_meta( $post_id, self::META_CAMPAIGN_TYPE, (string) ( $campaign['type'] ?? $campaign['campaign_type'] ?? $campaign['campaignType'] ?? '' ) );
 		update_post_meta( $post_id, self::META_API_URL, $api_url );
 
 		return $post_id;
+	}
+
+	/**
+	 * Normalize a single-campaign API response into a render-ready payload.
+	 *
+	 * @param mixed[] $response API response array.
+	 *
+	 * @return mixed[]
+	 */
+	private function normalize_campaign_detail_response( array $response ): array {
+		$data = $response['data'] ?? $response;
+
+		if ( ! is_array( $data ) ) {
+			return array();
+		}
+
+		$campaign = $data;
+		if ( isset( $data['campaign'] ) && is_array( $data['campaign'] ) ) {
+			$campaign = $data['campaign'];
+		}
+
+		if ( ! is_array( $campaign ) ) {
+			$campaign = array();
+		}
+
+		$related_keys = array( 'teams', 'ambassadors', 'comments', 'media', 'recentDonations', 'recent_donations' );
+
+		foreach ( $related_keys as $related_key ) {
+			if ( isset( $data[ $related_key ] ) && is_array( $data[ $related_key ] ) ) {
+				$campaign[ $related_key ] = $data[ $related_key ];
+			}
+		}
+
+		return $this->normalize_campaign_payload( $campaign );
+	}
+
+	/**
+	 * Normalize a campaigns-list response into a list of campaign payloads.
+	 *
+	 * @param mixed[] $response API response array.
+	 *
+	 * @return mixed[]
+	 */
+	private function normalize_campaign_list_response( array $response ): array {
+		$data = $response['data'] ?? $response;
+
+		if ( ! is_array( $data ) ) {
+			return array();
+		}
+
+		$is_list = isset( $data[0] ) && is_array( $data[0] );
+		if ( ! $is_list ) {
+			if ( isset( $data['campaign'] ) && is_array( $data['campaign'] ) ) {
+				return array( $this->normalize_campaign_payload( $data ) );
+			}
+			return array();
+		}
+
+		$campaigns = array();
+		foreach ( $data as $campaign ) {
+			if ( ! is_array( $campaign ) ) {
+				continue;
+			}
+			$campaigns[] = $this->normalize_campaign_payload( $campaign );
+		}
+
+		return $campaigns;
+	}
+
+	/**
+	 * Normalize campaign fields from backend payload variants.
+	 *
+	 * @param mixed[] $campaign Campaign payload.
+	 *
+	 * @return mixed[]
+	 */
+	private function normalize_campaign_payload( array $campaign ): array {
+		$campaign_id = $campaign['id'] ?? $campaign['campaignId'] ?? $campaign['campaign_id'] ?? '';
+		if ( '' !== (string) $campaign_id ) {
+			$campaign['id'] = (string) $campaign_id;
+		}
+
+		$name = $campaign['name'] ?? $campaign['title'] ?? $campaign['campaignName'] ?? $campaign['campaign_name'] ?? '';
+		if ( '' !== (string) $name ) {
+			$campaign['name']  = (string) $name;
+			$campaign['title'] = (string) $name;
+		}
+
+		$description = $campaign['description'] ?? $campaign['body'] ?? $campaign['content'] ?? '';
+		if ( '' !== (string) $description ) {
+			$campaign['description'] = (string) $description;
+		}
+
+		$amount_raised = $campaign['amount_raised'] ?? $campaign['amountRaised'] ?? $campaign['raised'] ?? 0;
+		$goal_amount   = $campaign['goal_amount'] ?? $campaign['goalAmount'] ?? $campaign['goal'] ?? 0;
+
+		$campaign['amount_raised'] = (float) $amount_raised;
+		$campaign['raised']        = (float) $amount_raised;
+		$campaign['goal_amount']   = (float) $goal_amount;
+		$campaign['goal']          = (float) $goal_amount;
+
+		$donation_amounts = $campaign['donation_amounts'] ?? $campaign['donationAmounts'] ?? $campaign['suggestedDonations'] ?? array();
+		if ( is_array( $donation_amounts ) ) {
+			$campaign['donation_amounts'] = $donation_amounts;
+		}
+
+		$teams = $campaign['teams'] ?? array();
+		if ( is_array( $teams ) ) {
+			$campaign['teams'] = $teams;
+		}
+
+		$comments = $campaign['comments'] ?? array();
+		if ( is_array( $comments ) ) {
+			$campaign['comments'] = $comments;
+		}
+
+		$media = $campaign['media'] ?? array();
+		if ( is_array( $media ) ) {
+			$campaign['media'] = $media;
+		}
+
+		$recent_donations = $campaign['recentDonations'] ?? $campaign['recent_donations'] ?? $campaign['donors'] ?? array();
+		if ( is_array( $recent_donations ) ) {
+			$campaign['recentDonations'] = $recent_donations;
+			$campaign['recent_donors']   = $recent_donations;
+			$campaign['donors']          = $recent_donations;
+		}
+
+		$donor_count = $campaign['donor_count'] ?? $campaign['donorCount'] ?? null;
+		if ( null === $donor_count && is_array( $recent_donations ) ) {
+			$donor_count = count( $recent_donations );
+		}
+		if ( null !== $donor_count ) {
+			$campaign['donor_count'] = (int) $donor_count;
+		}
+
+		$banner_url = $campaign['banner_url'] ?? $campaign['bannerUrl'] ?? $campaign['banner_image'] ?? $campaign['bannerImage'] ?? '';
+		if ( '' === (string) $banner_url && ! empty( $media ) ) {
+			$first_media = $media[0] ?? array();
+			if ( is_array( $first_media ) ) {
+				$banner_url = $first_media['url'] ?? $first_media['src'] ?? '';
+			}
+		}
+		if ( '' !== (string) $banner_url ) {
+			$campaign['banner_url'] = (string) $banner_url;
+		}
+
+		$video_url = $campaign['video_url'] ?? $campaign['videoUrl'] ?? $campaign['video'] ?? '';
+		if ( '' !== (string) $video_url ) {
+			$campaign['video_url'] = (string) $video_url;
+		}
+
+		$gallery_images = $campaign['gallery_images'] ?? $campaign['galleryImages'] ?? array();
+		if ( empty( $gallery_images ) && ! empty( $media ) ) {
+			$gallery_images = $media;
+		}
+		if ( is_array( $gallery_images ) ) {
+			$campaign['gallery_images'] = $gallery_images;
+			$campaign['images']         = $gallery_images;
+		}
+
+		$url = $campaign['url'] ?? $campaign['publicUrl'] ?? $campaign['public_url'] ?? $campaign['campaignUrl'] ?? '';
+		if ( '' !== (string) $url ) {
+			$campaign['url'] = (string) $url;
+		}
+
+		return $campaign;
 	}
 
 	/**

@@ -122,11 +122,11 @@ class ShortcodeRegistry {
 	 * @param string  $class    Additional CSS class.
 	 */
 	private function render_campaign_card( array $campaign, string $class = '' ): void {
-		$title       = (string) ( $campaign['title'] ?? '' );
-		$description = (string) ( $campaign['description'] ?? '' );
-		$goal        = isset( $campaign['goal'] ) ? (float) $campaign['goal'] : 0.0;
-		$raised      = isset( $campaign['raised'] ) ? (float) $campaign['raised'] : 0.0;
-		$url         = (string) ( $campaign['url'] ?? '' );
+		$title       = (string) ( $campaign['name'] ?? $campaign['title'] ?? $campaign['campaignName'] ?? '' );
+		$description = (string) ( $campaign['description'] ?? $campaign['body'] ?? '' );
+		$goal        = (float) ( $campaign['goal_amount'] ?? $campaign['goalAmount'] ?? $campaign['goal'] ?? 0 );
+		$raised      = (float) ( $campaign['amount_raised'] ?? $campaign['amountRaised'] ?? $campaign['raised'] ?? 0 );
+		$url         = (string) ( $campaign['url'] ?? $campaign['publicUrl'] ?? $campaign['public_url'] ?? $campaign['campaignUrl'] ?? '' );
 		$class_attr  = 'fundraisehub-campaign-card ' . $class;
 		?>
 		<div class="<?php echo esc_attr( $class_attr ); ?>">

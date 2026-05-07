@@ -153,6 +153,33 @@ class CampaignRendererTest extends TestCase {
 		$this->assertStringContainsString( '20', $html );
 	}
 
+	/**
+	 * render_stats_bar() should support nested data.campaign-style payloads.
+	 */
+	public function test_render_stats_bar_supports_nested_campaign_payload(): void {
+		$campaign = array(
+			'campaign' => array(
+				'id'          => '77',
+				'title'       => 'Nested Campaign',
+				'amountRaised' => 1500,
+				'goalAmount'  => 5000,
+				'layout'      => array(
+					'stats_bar' => array( 'enabled' => true ),
+				),
+			),
+			'recentDonations' => array(
+				array( 'name' => 'Alice', 'amount' => 10 ),
+				array( 'name' => 'Bob', 'amount' => 20 ),
+			),
+		);
+
+		$html = CampaignRenderer::render_stats_bar( $campaign );
+
+		$this->assertStringContainsString( '1,500.00', $html );
+		$this->assertStringContainsString( '5,000.00', $html );
+		$this->assertStringContainsString( '>2<', $html );
+	}
+
 	// -------------------------------------------------------------------------
 	// render_thermometer()
 	// -------------------------------------------------------------------------

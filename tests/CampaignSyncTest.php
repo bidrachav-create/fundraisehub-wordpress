@@ -97,6 +97,37 @@ class CampaignSyncTest extends TestCase {
 	}
 
 	/**
+	 * get_campaign() should unwrap nested detail payloads from data.campaign.
+	 */
+	public function test_get_campaign_unwraps_nested_detail_payload(): void {
+		$raw = array(
+			'data' => array(
+				'campaign'       => array(
+					'id'          => '13',
+					'title'       => 'Nested Campaign',
+					'amountRaised' => 225,
+					'goalAmount'  => 900,
+				),
+				'teams'          => array( array( 'name' => 'Team One' ) ),
+				'comments'       => array( array( 'message' => 'Go!' ) ),
+				'recentDonations' => array( array( 'name' => 'Alice', 'amount' => 50 ) ),
+			),
+		);
+		WPTestState::$http_response_queue[] = WPTestState::http_ok( $raw );
+
+		$sync   = new CampaignSync( $this->make_client() );
+		$result = $sync->get_campaign( '13' );
+
+		$this->assertSame( '13', $result['id'] );
+		$this->assertSame( 'Nested Campaign', $result['title'] );
+		$this->assertSame( 225.0, $result['amount_raised'] );
+		$this->assertCount( 1, $result['teams'] );
+		$this->assertCount( 1, $result['comments'] );
+		$this->assertCount( 1, $result['recentDonations'] );
+		$this->assertCount( 1, $result['donors'] );
+	}
+
+	/**
 	 * get_campaign() should write to the transient on a cache miss.
 	 */
 	public function test_get_campaign_caches_result(): void {
@@ -170,6 +201,30 @@ class CampaignSyncTest extends TestCase {
 	}
 
 	/**
+	 * get_campaigns() should normalize list items that contain nested campaign objects.
+	 */
+	public function test_get_campaigns_normalizes_nested_campaign_items(): void {
+		$payload = array(
+			'data' => array(
+				array(
+					'campaign' => array(
+						'campaignId' => '101',
+						'title'      => 'Nested Campaign List Item',
+					),
+				),
+			),
+		);
+		WPTestState::$http_response_queue[] = WPTestState::http_ok( $payload );
+
+		$sync   = new CampaignSync( $this->make_client() );
+		$result = $sync->get_campaigns();
+
+		$this->assertCount( 1, $result );
+		$this->assertSame( '101', $result[0]['id'] );
+		$this->assertSame( 'Nested Campaign List Item', $result[0]['title'] );
+	}
+
+	/**
 	 * get_campaigns() should return from the transient when cached.
 	 */
 	public function test_get_campaigns_returns_cached_data(): void {
@@ -236,6 +291,22 @@ class CampaignSyncTest extends TestCase {
 				'meta' => array( 'total_pages' => 2 ),
 			)
 		);
+		// Detail payload for id=1.
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'data' => array(
+					'campaign' => $this->campaign( '1' ),
+				),
+			)
+		);
+		// Detail payload for id=2.
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'data' => array(
+					'campaign' => $this->campaign( '2' ),
+				),
+			)
+		);
 		// Page 2: one campaign.
 		WPTestState::$http_response_queue[] = WPTestState::http_ok(
 			array(
@@ -243,11 +314,19 @@ class CampaignSyncTest extends TestCase {
 				'meta' => array( 'total_pages' => 2 ),
 			)
 		);
+		// Detail payload for id=3.
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'data' => array(
+					'campaign' => $this->campaign( '3' ),
+				),
+			)
+		);
 
 		$sync = new CampaignSync( $this->make_client() );
 		$sync->sync_all();
 
-		$this->assertSame( 2, WPTestState::$http_get_call_count, 'Must issue one HTTP request per page' );
+		$this->assertSame( 5, WPTestState::$http_get_call_count, 'Must issue list requests plus detail requests for each campaign' );
 	}
 
 	/**
@@ -273,7 +352,19 @@ class CampaignSyncTest extends TestCase {
 	 * sync_one() should insert a new post and update the transient.
 	 */
 	public function test_sync_one_inserts_post_and_caches(): void {
-		WPTestState::$http_response_queue[] = WPTestState::http_ok( $this->campaign( '42', 'My Campaign' ) );
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'data' => array(
+					'campaign' => array(
+						'id'          => '42',
+						'title'       => 'My Campaign',
+						'amountRaised' => 123,
+						'goalAmount'  => 456,
+					),
+					'teams'    => array( array( 'name' => 'Team A' ) ),
+				),
+			)
+		);
 
 		$sync    = new CampaignSync( $this->make_client() );
 		$post_id = $sync->sync_one( '42' );
@@ -281,6 +372,7 @@ class CampaignSyncTest extends TestCase {
 		$this->assertIsInt( $post_id );
 		$this->assertGreaterThan( 0, $post_id );
 		$this->assertArrayHasKey( 'fundraisehub_campaign_42', WPTestState::$transients );
+		$this->assertSame( '42', WPTestState::$post_meta[ $post_id ]['_fundraisehub_campaign_id'] ?? '' );
 	}
 
 	/**
