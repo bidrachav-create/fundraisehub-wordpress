@@ -301,7 +301,13 @@ function add_query_arg( array|string $key_or_params, string $value_or_url = '', 
 }
 
 function home_url( string $path = '' ): string {
-	return rtrim( WPTestState::$home_url, '/' ) . $path;
+	$base = rtrim( WPTestState::$home_url, '/' );
+
+	if ( '' === $path ) {
+		return $base;
+	}
+
+	return $base . '/' . ltrim( $path, '/' );
 }
 
 function admin_url( string $path = '' ): string {

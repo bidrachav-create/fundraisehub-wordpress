@@ -509,4 +509,13 @@ class ApiClientTest extends TestCase {
 		$this->assertSame( 'https://example.org:8443', $headers['Origin'] ?? '' );
 		$this->assertSame( 'https://example.org:8443', $headers['X-FundraiseHub-Site-Origin'] ?? '' );
 	}
+
+	/**
+	 * home_url() test stub should join relative paths with one slash.
+	 */
+	public function test_home_url_stub_joins_relative_paths_with_single_slash(): void {
+		WPTestState::$home_url = 'https://example.org/';
+		$this->assertSame( 'https://example.org/foo', home_url( 'foo' ) );
+		$this->assertSame( 'https://example.org/bar', home_url( '/bar' ) );
+	}
 }

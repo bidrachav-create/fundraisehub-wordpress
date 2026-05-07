@@ -73,4 +73,4 @@ jobs:
         run: npm run lint:js -- "fundraisehub-core/blocks/**/*.js" "fundraisehub-core/js/**/*.js"
 
       - name: Lint CSS
-        run: npm run lint:css -- --allow-empty-input "fundraisehub-core/blocks/**/*.css" "fundraisehub-core/css/**/*.css"
+        run: npm run lint:css -- --allow-empty-input "fundraisehub-core/blocks/**/*.css" "fundraisehub-core/assets/css/**/*.css"

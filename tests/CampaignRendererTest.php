@@ -62,6 +62,20 @@ class CampaignRendererTest extends TestCase {
 	// -------------------------------------------------------------------------
 
 	/**
+	 * parse_amount() should treat comma-only grouped values as thousands separators.
+	 */
+	public function test_parse_amount_handles_comma_grouping(): void {
+		$this->assertSame( 1250.0, CampaignRenderer::parse_amount( '1,250' ) );
+	}
+
+	/**
+	 * parse_amount() should parse European thousands/decimal formatting.
+	 */
+	public function test_parse_amount_handles_european_grouping_and_decimal(): void {
+		$this->assertSame( 1250.75, CampaignRenderer::parse_amount( '1.250,75' ) );
+	}
+
+	/**
 	 * render_block() should return an empty string for an unknown block slug,
 	 * even when typical campaign data is supplied.
 	 */
