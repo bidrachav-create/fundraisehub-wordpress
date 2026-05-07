@@ -468,6 +468,16 @@ class CampaignSync {
 	 * @return mixed[]
 	 */
 	private function normalize_campaign_payload( array $campaign ): array {
+		if ( isset( $campaign['campaign'] ) && is_array( $campaign['campaign'] ) ) {
+			$base_campaign = $campaign['campaign'];
+			foreach ( array( 'teams', 'ambassadors', 'comments', 'media', 'recentDonations', 'recent_donations' ) as $related_key ) {
+				if ( isset( $campaign[ $related_key ] ) && is_array( $campaign[ $related_key ] ) ) {
+					$base_campaign[ $related_key ] = $campaign[ $related_key ];
+				}
+			}
+			$campaign = $base_campaign;
+		}
+
 		$campaign_id = $campaign['id'] ?? $campaign['campaignId'] ?? $campaign['campaign_id'] ?? '';
 		if ( '' !== (string) $campaign_id ) {
 			$campaign['id'] = (string) $campaign_id;

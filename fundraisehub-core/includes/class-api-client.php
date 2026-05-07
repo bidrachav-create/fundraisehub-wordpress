@@ -301,7 +301,7 @@ class ApiClient {
 
 		$site_origin = $this->get_site_origin_header_value();
 		if ( '' !== $site_origin ) {
-			$headers['Origin']                    = $site_origin;
+			$headers['Origin']                     = $site_origin;
 			$headers['X-FundraiseHub-Site-Origin'] = $site_origin;
 		}
 
