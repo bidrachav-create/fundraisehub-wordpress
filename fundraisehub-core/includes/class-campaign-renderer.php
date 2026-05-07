@@ -107,7 +107,7 @@ class CampaignRenderer {
 			$campaign_data['donors']          = $recent_donations;
 		}
 
-		$donor_count = $campaign_data['donor_count'] ?? $campaign_data['donorCount'] ?? null;
+		$donor_count = $campaign_data['donor_count'] ?? $campaign_data['donorCount'] ?? $campaign_data['totalDonors'] ?? $campaign_data['total_donors'] ?? $campaign_data['donorsCount'] ?? null;
 		if ( null === $donor_count && is_array( $recent_donations ) ) {
 			$donor_count = count( $recent_donations );
 		}
