@@ -314,6 +314,10 @@ function wp_safe_redirect( string $location, int $status = 302, string $x_redire
 	throw new WPTestRedirectException( $location );
 }
 
+function wp_parse_url( string $url, int $component = -1 ): mixed {
+	return parse_url( $url, $component );
+}
+
 // ---------------------------------------------------------------------------
 // JSON.
 // ---------------------------------------------------------------------------

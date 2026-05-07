@@ -38,6 +38,7 @@ class Settings {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_notices', array( $this, 'maybe_show_setup_notice' ) );
 		add_action( 'admin_notices', array( $this, 'maybe_show_resync_notice' ) );
+		add_action( 'admin_notices', array( $this, 'maybe_show_origin_warning' ) );
 
 		// Dismiss the setup flag after settings are saved (nonce already verified by options.php).
 		add_action( 'update_option_fundraisehub_api_key', array( $this, 'dismiss_setup_flag' ) );
@@ -105,7 +106,7 @@ class Settings {
 			'fundraisehub_api_url',
 			array(
 				'type'              => 'string',
-				'sanitize_callback' => 'esc_url_raw',
+				'sanitize_callback' => array( $this, 'sanitize_api_url' ),
 				'default'           => 'https://app.fundraisehub.com',
 			)
 		);
@@ -168,20 +169,52 @@ class Settings {
 	}
 
 	/**
+	 * Sanitize the API URL on save.
+	 *
+	 * When the value is environment-managed via the FUNDRAISEHUB_API_URL
+	 * constant, the submitted form value is discarded and the existing DB
+	 * option is returned unchanged so the constant always takes precedence.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 *
+	 * @return string Sanitized URL.
+	 */
+	public function sanitize_api_url( mixed $value ): string {
+		if ( $this->is_api_url_env_managed() ) {
+			return (string) get_option( 'fundraisehub_api_url', 'https://app.fundraisehub.com' );
+		}
+
+		return esc_url_raw( (string) $value );
+	}
+
+	/**
 	 * Sanitize the API key and test the connection on save.
 	 *
-	 * Adds a settings error (shown as an admin notice on redirect) to report
-	 * whether the connection succeeded or failed.
+	 * Behaviour:
+	 * - When the FUNDRAISEHUB_API_KEY constant is defined the submitted value
+	 *   is discarded and the existing stored option is returned unchanged.
+	 * - When the submitted value is empty and a key is already stored, the
+	 *   stored key is preserved (avoids accidental erasure when the admin
+	 *   saves other settings without re-entering the key).
+	 * - Otherwise the submitted value is sanitized and the connection is
+	 *   tested; a settings error is added to report the outcome.
 	 *
 	 * @param mixed $value Raw submitted value.
 	 *
 	 * @return string Sanitized API key.
 	 */
 	public function sanitize_api_key( mixed $value ): string {
+		// Constant-managed: ignore the form submission entirely.
+		if ( $this->is_api_key_env_managed() ) {
+			return (string) get_option( 'fundraisehub_api_key', '' );
+		}
+
 		$value = sanitize_text_field( (string) $value );
 
+		// Empty submission while a key is already stored → keep the stored key.
 		if ( '' === $value ) {
-			return $value;
+			$existing = (string) get_option( 'fundraisehub_api_key', '' );
+			return $existing;
 		}
 
 		// Read the API URL from the current form submission so the test uses
@@ -272,6 +305,71 @@ class Settings {
 			'</p></div>';
 	}
 
+	/**
+	 * Show an admin warning on the settings page when the WordPress site origin
+	 * differs from the configured FundRaiseHub API origin.
+	 *
+	 * FundRaiseHub validates the Origin header on cross-origin requests. When
+	 * the WordPress site is served from a different domain than the API, admins
+	 * must add the site URL to the Allowed Origins list in their FundRaiseHub
+	 * platform settings. This notice reminds them to do so.
+	 */
+	public function maybe_show_origin_warning(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// Only show on the FundRaiseHub settings page to avoid flooding every
+		// admin screen with a persistent notice.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ( sanitize_key( wp_unslash( $_GET['page'] ?? '' ) ) ) !== self::PAGE_SLUG ) {
+			return;
+		}
+
+		$api_url = $this->is_api_url_env_managed()
+			? $this->read_api_url_constant()
+			: (string) get_option( 'fundraisehub_api_url', '' );
+
+		if ( '' === $api_url ) {
+			$api_url = (string) get_option( 'fundraisehub_site_url', '' );
+		}
+
+		// Nothing to compare when the API URL is not yet configured.
+		if ( '' === $api_url ) {
+			return;
+		}
+
+		$site_url    = home_url();
+		$site_origin = wp_parse_url( $site_url, PHP_URL_SCHEME ) . '://' . wp_parse_url( $site_url, PHP_URL_HOST );
+		$api_origin  = wp_parse_url( $api_url, PHP_URL_SCHEME ) . '://' . wp_parse_url( $api_url, PHP_URL_HOST );
+
+		// Same origin — no cross-origin issue to warn about.
+		if ( $site_origin === $api_origin ) {
+			return;
+		}
+
+		?>
+		<div class="notice notice-warning is-dismissible">
+			<p>
+				<?php
+				printf(
+					wp_kses(
+						/* translators: 1: WordPress site URL, 2: FundRaiseHub API URL */
+						__( 'FundRaiseHub: Your site (<strong>%1$s</strong>) connects to a FundRaiseHub instance at a different origin (<strong>%2$s</strong>). Please ensure <strong>%1$s</strong> is added to the <em>Allowed Origins</em> list in your FundRaiseHub platform settings to prevent cross-origin request errors.', 'fundraisehub-core' ),
+						array(
+							'strong' => array(),
+							'em'     => array(),
+						)
+					),
+					esc_url( $site_url ),
+					esc_url( $api_url )
+				);
+				?>
+			</p>
+		</div>
+		<?php
+	}
+
 	// -------------------------------------------------------------------------
 	// Render callbacks
 	// -------------------------------------------------------------------------
@@ -317,11 +415,18 @@ class Settings {
 	/**
 	 * Render the API URL input field.
 	 *
-	 * Pre-fills from the legacy `fundraisehub_site_url` option when the
-	 * current option has not been saved yet, so upgraders see their
-	 * existing URL rather than the default placeholder.
+	 * When the value is supplied via the FUNDRAISEHUB_API_URL constant the
+	 * field is rendered as read-only and a note is shown to the admin. Otherwise
+	 * the field is pre-filled from the stored option (with a backward-compatible
+	 * fallback to the legacy `fundraisehub_site_url` option).
 	 */
 	public function render_api_url_field(): void {
+		if ( $this->is_api_url_env_managed() ) {
+			echo '<input type="url" id="fundraisehub_api_url" name="fundraisehub_api_url" value="' . esc_attr( $this->read_api_url_constant() ) . '" class="regular-text" readonly />';
+			echo '<p class="description">' . esc_html__( 'This value is set via the FUNDRAISEHUB_API_URL constant and cannot be changed here.', 'fundraisehub-core' ) . '</p>';
+			return;
+		}
+
 		$value = (string) get_option( 'fundraisehub_api_url', '' );
 
 		// Backward-compat: migrate from the legacy option key on first view.
@@ -334,19 +439,36 @@ class Settings {
 	}
 
 	/**
-	 * Render the API Key input field with a Show/Hide toggle button.
+	 * Render the API Key input field.
+	 *
+	 * Security considerations:
+	 * - The stored key value is never written back into the input so it is not
+	 *   exposed to the browser. When a key is already saved the input is left
+	 *   empty; submitting the form without entering a new value preserves the
+	 *   existing key (handled in sanitize_api_key()).
+	 * - When the FUNDRAISEHUB_API_KEY constant is defined the field is rendered
+	 *   as read-only with a note that the value is environment-managed.
 	 */
 	public function render_api_key_field(): void {
-		$api_key = (string) get_option( 'fundraisehub_api_key', '' );
+		if ( $this->is_api_key_env_managed() ) {
+			echo '<input type="password" id="fundraisehub_api_key" name="fundraisehub_api_key" value="" class="regular-text" readonly placeholder="' . esc_attr__( 'Set via FUNDRAISEHUB_API_KEY constant', 'fundraisehub-core' ) . '" autocomplete="off" />';
+			echo '<p class="description">' . esc_html__( 'This value is set via the FUNDRAISEHUB_API_KEY constant and cannot be changed here.', 'fundraisehub-core' ) . '</p>';
+			return;
+		}
+
+		$has_key = '' !== (string) get_option( 'fundraisehub_api_key', '' );
 		?>
 		<span style="display:inline-flex;align-items:center;gap:6px;">
 			<input
 				type="password"
 				id="fundraisehub_api_key"
 				name="fundraisehub_api_key"
-				value="<?php echo esc_attr( $api_key ); ?>"
+				value=""
 				class="regular-text"
 				autocomplete="off"
+				<?php if ( $has_key ) : ?>
+				placeholder="<?php echo esc_attr__( '••••••••••• (saved)', 'fundraisehub-core' ); ?>"
+				<?php endif; ?>
 			/>
 			<button
 				type="button"
@@ -363,7 +485,11 @@ class Settings {
 				})(this)"
 			><?php esc_html_e( 'Show', 'fundraisehub-core' ); ?></button>
 		</span>
+		<?php if ( $has_key ) : ?>
+		<p class="description"><?php esc_html_e( 'API key is saved. Leave blank to keep the existing key, or enter a new value to replace it.', 'fundraisehub-core' ); ?></p>
+		<?php else : ?>
 		<p class="description"><?php esc_html_e( 'Your FundRaiseHub API key. Keep this secret.', 'fundraisehub-core' ); ?></p>
+		<?php endif; ?>
 		<?php
 	}
 
@@ -433,5 +559,51 @@ class Settings {
 		}
 		echo '<input type="text" id="fundraisehub_campaign_slug" name="fundraisehub_campaign_slug" value="' . esc_attr( $value ) . '" class="regular-text" />';
 		echo '<p class="description">' . esc_html__( 'URL slug for the campaign archive page (default: campaigns). Changing this requires saving and then re-saving your WordPress permalinks.', 'fundraisehub-core' ) . '</p>';
+	}
+
+	// -------------------------------------------------------------------------
+	// Constant / environment helpers
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Return the value of the FUNDRAISEHUB_API_URL constant, or '' if not defined.
+	 *
+	 * Extracted into a protected method so tests can override it via a subclass
+	 * without needing to (re-)define a PHP constant.
+	 *
+	 * @return string
+	 */
+	protected function read_api_url_constant(): string {
+		return defined( 'FUNDRAISEHUB_API_URL' ) ? (string) FUNDRAISEHUB_API_URL : '';
+	}
+
+	/**
+	 * Return the value of the FUNDRAISEHUB_API_KEY constant, or '' if not defined.
+	 *
+	 * Extracted into a protected method so tests can override it via a subclass
+	 * without needing to (re-)define a PHP constant.
+	 *
+	 * @return string
+	 */
+	protected function read_api_key_constant(): string {
+		return defined( 'FUNDRAISEHUB_API_KEY' ) ? (string) FUNDRAISEHUB_API_KEY : '';
+	}
+
+	/**
+	 * Return true when the API URL is provided via the FUNDRAISEHUB_API_URL constant.
+	 *
+	 * @return bool
+	 */
+	private function is_api_url_env_managed(): bool {
+		return '' !== $this->read_api_url_constant();
+	}
+
+	/**
+	 * Return true when the API key is provided via the FUNDRAISEHUB_API_KEY constant.
+	 *
+	 * @return bool
+	 */
+	private function is_api_key_env_managed(): bool {
+		return '' !== $this->read_api_key_constant();
 	}
 }
