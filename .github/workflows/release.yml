@@ -23,6 +23,23 @@ jobs:
           node-version: '20'
           cache: npm
 
+      - name: Validate tag vs plugin versions
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          CORE_VERSION=$(grep -m1 'Version:' fundraisehub-core/fundraisehub-core.php | sed 's/.*Version:[[:space:]]*//' | tr -d '[:space:]')
+          ELEMENTOR_VERSION=$(grep -m1 'Version:' fundraisehub-elementor/fundraisehub-elementor.php | sed 's/.*Version:[[:space:]]*//' | tr -d '[:space:]')
+          echo "Tag version:      ${TAG_VERSION}"
+          echo "Core version:     ${CORE_VERSION}"
+          echo "Elementor version: ${ELEMENTOR_VERSION}"
+          if [ "${TAG_VERSION}" != "${CORE_VERSION}" ]; then
+            echo "::error::Tag version (${TAG_VERSION}) does not match fundraisehub-core version (${CORE_VERSION})"
+            exit 1
+          fi
+          if [ "${TAG_VERSION}" != "${ELEMENTOR_VERSION}" ]; then
+            echo "::error::Tag version (${TAG_VERSION}) does not match fundraisehub-elementor version (${ELEMENTOR_VERSION})"
+            exit 1
+          fi
+
       - name: Install JS dependencies
         run: npm ci
 
