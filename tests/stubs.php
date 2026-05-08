@@ -347,6 +347,10 @@ function sanitize_text_field( string $str ): string {
 	return strip_tags( trim( $str ) );
 }
 
+function sanitize_textarea_field( string $str ): string {
+	return strip_tags( trim( $str ) );
+}
+
 function sanitize_key( string $key ): string {
 	return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( $key ) );
 }
@@ -538,8 +542,17 @@ function do_settings_sections( string $page ): void {}
 
 function submit_button( string $text = '', string $type = 'primary', string $name = 'submit', bool $wrap = true, array $other_attributes = array() ): void {}
 
+function wp_add_dashboard_widget( string $widget_id, string $widget_name, callable $callback, ?callable $control_callback = null, array $callback_args = array() ): void {}
+
 function get_admin_page_title(): string {
 	return 'FundRaiseHub Settings';
+}
+
+function get_bloginfo( string $show = '', string $filter = 'raw' ): string {
+	if ( 'version' === $show ) {
+		return '6.7';
+	}
+	return '';
 }
 
 // ---------------------------------------------------------------------------

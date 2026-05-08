@@ -31,6 +31,7 @@ FundRaiseHub Core connects your WordPress site to your FundRaiseHub account, let
   * Campaign Honor Scroll
 * **Shortcodes** — `[fundraisehub_campaign id="…"]` and `[fundraisehub_campaign_list]` for classic editor compatibility.
 * **Automatic sync** — a daily WP-Cron event keeps campaign data fresh; a manual **Sync Now** button is available on the settings page.
+* **Dashboard feedback tools** — a WordPress Dashboard widget provides separate forms for product feedback and bug reports, submitted directly to your FundRaiseHub backend API.
 * **Custom post type** — campaigns are stored as the `fundraisehub_campaign` CPT with full REST API support, making them available for custom themes and queries.
 
 **Requirements**
