@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish release ZIPs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Validate tag vs plugin versions
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          CORE_VERSION=$(grep -m1 'Version:' fundraisehub-core/fundraisehub-core.php | sed 's/.*Version:[[:space:]]*//' | tr -d '[:space:]')
+          ELEMENTOR_VERSION=$(grep -m1 'Version:' fundraisehub-elementor/fundraisehub-elementor.php | sed 's/.*Version:[[:space:]]*//' | tr -d '[:space:]')
+          echo "Tag version:      ${TAG_VERSION}"
+          echo "Core version:     ${CORE_VERSION}"
+          echo "Elementor version: ${ELEMENTOR_VERSION}"
+          if [ "${TAG_VERSION}" != "${CORE_VERSION}" ]; then
+            echo "::error::Tag version (${TAG_VERSION}) does not match fundraisehub-core version (${CORE_VERSION})"
+            exit 1
+          fi
+          if [ "${TAG_VERSION}" != "${ELEMENTOR_VERSION}" ]; then
+            echo "::error::Tag version (${TAG_VERSION}) does not match fundraisehub-elementor version (${ELEMENTOR_VERSION})"
+            exit 1
+          fi
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Build plugin ZIPs
+        run: bash bin/build-zip.sh
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ github.ref_name }}"
+          body: |
+            ## FundRaiseHub WordPress Plugins ${{ github.ref_name }}
+
+            ### Installation
+
+            1. Download the ZIP(s) below.
+            2. In your WordPress admin go to **Plugins → Add New → Upload Plugin**.
+            3. Choose the ZIP file and click **Install Now**, then **Activate**.
+
+            ### Included packages
+
+            | File | Description |
+            |---|---|
+            | `fundraisehub-core-*.zip` | Core plugin – required. Registers the campaign CPT, Gutenberg blocks, shortcodes, API client and settings page. |
+            | `fundraisehub-elementor-*.zip` | Optional Elementor add-on. Requires the Core plugin **and** Elementor to be active. |
+
+            ### Requirements
+
+            - WordPress 6.4+
+            - PHP 8.1+
+            - Elementor (only for the Elementor add-on ZIP)
+          files: dist/*.zip
+          fail_on_unmatched_files: true
+          generate_release_notes: true
