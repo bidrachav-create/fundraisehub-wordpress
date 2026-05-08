@@ -45,6 +45,7 @@ $includes = array(
 	'includes/class-shortcode-registry.php',
 	'includes/class-campaign-sync.php',
 	'includes/class-setup-wizard.php',
+	'includes/class-dashboard-feedback.php',
 );
 
 foreach ( $includes as $file ) {
@@ -108,5 +109,6 @@ function fundraisehub_core_init(): void {
 	( new BlockRegistry() )->register();
 	( new ShortcodeRegistry() )->register();
 	( new CampaignSync() )->register();
+	( new DashboardFeedback() )->register();
 }
 add_action( 'plugins_loaded', __NAMESPACE__ . '\\fundraisehub_core_init' );
