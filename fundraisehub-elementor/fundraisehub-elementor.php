@@ -3,7 +3,7 @@
  * Plugin Name:       FundRaiseHub Elementor
  * Plugin URI:        https://fundraisehub.com/
  * Description:       Elementor widget pack for FundRaiseHub campaigns. Requires FundRaiseHub Core.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Requires Plugins:  fundraisehub-core
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'FUNDRAISEHUB_ELEMENTOR_VERSION', '1.0.0' );
+define( 'FUNDRAISEHUB_ELEMENTOR_VERSION', '1.0.1' );
 define( 'FUNDRAISEHUB_ELEMENTOR_FILE', __FILE__ );
 define( 'FUNDRAISEHUB_ELEMENTOR_DIR', plugin_dir_path( __FILE__ ) );
 define( 'FUNDRAISEHUB_ELEMENTOR_URL', plugin_dir_url( __FILE__ ) );
