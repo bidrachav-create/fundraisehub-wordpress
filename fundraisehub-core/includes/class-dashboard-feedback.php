@@ -40,6 +40,22 @@ class DashboardFeedback {
 	private const BUG_REPORT_ENDPOINT = 'bug-reports';
 
 	/**
+	 * API client instance used for backend submissions.
+	 *
+	 * @var ApiClient
+	 */
+	private ApiClient $api;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param ApiClient|null $api Optional pre-configured API client.
+	 */
+	public function __construct( ?ApiClient $api = null ) {
+		$this->api = $api ?? new ApiClient();
+	}
+
+	/**
 	 * Register hooks.
 	 */
 	public function register(): void {
@@ -120,11 +136,11 @@ class DashboardFeedback {
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce verified by check_admin_referer().
-		$subject = isset( $_POST['fundraisehub_feedback_subject'] )
-			? sanitize_text_field( wp_unslash( (string) $_POST['fundraisehub_feedback_subject'] ) )
+		$subject = ( isset( $_POST['fundraisehub_feedback_subject'] ) && is_string( $_POST['fundraisehub_feedback_subject'] ) )
+			? sanitize_text_field( wp_unslash( $_POST['fundraisehub_feedback_subject'] ) )
 			: '';
-		$message = isset( $_POST['fundraisehub_feedback_message'] )
-			? sanitize_textarea_field( wp_unslash( (string) $_POST['fundraisehub_feedback_message'] ) )
+		$message = ( isset( $_POST['fundraisehub_feedback_message'] ) && is_string( $_POST['fundraisehub_feedback_message'] ) )
+			? sanitize_textarea_field( wp_unslash( $_POST['fundraisehub_feedback_message'] ) )
 			: '';
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
@@ -132,7 +148,7 @@ class DashboardFeedback {
 			$this->redirect_with_status( 'feedback', 'error', __( 'Please complete all feedback fields.', 'fundraisehub-core' ) );
 		}
 
-		$response = ( new ApiClient() )->post(
+		$response = $this->api->post(
 			self::FEEDBACK_ENDPOINT,
 			array(
 				'subject' => $subject,
@@ -160,14 +176,14 @@ class DashboardFeedback {
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce verified by check_admin_referer().
-		$title       = isset( $_POST['fundraisehub_bug_title'] )
-			? sanitize_text_field( wp_unslash( (string) $_POST['fundraisehub_bug_title'] ) )
+		$title       = ( isset( $_POST['fundraisehub_bug_title'] ) && is_string( $_POST['fundraisehub_bug_title'] ) )
+			? sanitize_text_field( wp_unslash( $_POST['fundraisehub_bug_title'] ) )
 			: '';
-		$description = isset( $_POST['fundraisehub_bug_description'] )
-			? sanitize_textarea_field( wp_unslash( (string) $_POST['fundraisehub_bug_description'] ) )
+		$description = ( isset( $_POST['fundraisehub_bug_description'] ) && is_string( $_POST['fundraisehub_bug_description'] ) )
+			? sanitize_textarea_field( wp_unslash( $_POST['fundraisehub_bug_description'] ) )
 			: '';
-		$steps       = isset( $_POST['fundraisehub_bug_steps'] )
-			? sanitize_textarea_field( wp_unslash( (string) $_POST['fundraisehub_bug_steps'] ) )
+		$steps       = ( isset( $_POST['fundraisehub_bug_steps'] ) && is_string( $_POST['fundraisehub_bug_steps'] ) )
+			? sanitize_textarea_field( wp_unslash( $_POST['fundraisehub_bug_steps'] ) )
 			: '';
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
@@ -175,7 +191,7 @@ class DashboardFeedback {
 			$this->redirect_with_status( 'bug', 'error', __( 'Please complete all required bug report fields.', 'fundraisehub-core' ) );
 		}
 
-		$response = ( new ApiClient() )->post(
+		$response = $this->api->post(
 			self::BUG_REPORT_ENDPOINT,
 			array(
 				'title'       => $title,
@@ -207,9 +223,15 @@ class DashboardFeedback {
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only notice state from redirect query args.
-		$type   = isset( $_GET['fundraisehub_submission'] ) ? sanitize_key( wp_unslash( (string) $_GET['fundraisehub_submission'] ) ) : '';
-		$status = isset( $_GET['fundraisehub_status'] ) ? sanitize_key( wp_unslash( (string) $_GET['fundraisehub_status'] ) ) : '';
-		$text   = isset( $_GET['fundraisehub_notice'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['fundraisehub_notice'] ) ) : '';
+		$type   = ( isset( $_GET['fundraisehub_submission'] ) && is_string( $_GET['fundraisehub_submission'] ) )
+			? sanitize_key( wp_unslash( $_GET['fundraisehub_submission'] ) )
+			: '';
+		$status = ( isset( $_GET['fundraisehub_status'] ) && is_string( $_GET['fundraisehub_status'] ) )
+			? sanitize_key( wp_unslash( $_GET['fundraisehub_status'] ) )
+			: '';
+		$text   = ( isset( $_GET['fundraisehub_notice'] ) && is_string( $_GET['fundraisehub_notice'] ) )
+			? sanitize_text_field( wp_unslash( $_GET['fundraisehub_notice'] ) )
+			: '';
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		if ( '' === $type || '' === $status || '' === $text ) {
