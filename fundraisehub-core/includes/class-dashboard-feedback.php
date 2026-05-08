@@ -160,13 +160,13 @@ class DashboardFeedback {
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce verified by check_admin_referer().
-		$title = isset( $_POST['fundraisehub_bug_title'] )
+		$title       = isset( $_POST['fundraisehub_bug_title'] )
 			? sanitize_text_field( wp_unslash( (string) $_POST['fundraisehub_bug_title'] ) )
 			: '';
 		$description = isset( $_POST['fundraisehub_bug_description'] )
 			? sanitize_textarea_field( wp_unslash( (string) $_POST['fundraisehub_bug_description'] ) )
 			: '';
-		$steps = isset( $_POST['fundraisehub_bug_steps'] )
+		$steps       = isset( $_POST['fundraisehub_bug_steps'] )
 			? sanitize_textarea_field( wp_unslash( (string) $_POST['fundraisehub_bug_steps'] ) )
 			: '';
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
