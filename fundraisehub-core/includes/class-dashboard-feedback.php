@@ -218,6 +218,10 @@ class DashboardFeedback {
 	public function maybe_show_submission_notice(): void {
 		global $pagenow;
 
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
 		if ( 'index.php' !== $pagenow ) {
 			return;
 		}
@@ -256,7 +260,7 @@ class DashboardFeedback {
 				array(
 					'fundraisehub_submission' => sanitize_key( $type ),
 					'fundraisehub_status'     => sanitize_key( $status ),
-					'fundraisehub_notice'     => rawurlencode( $message ),
+					'fundraisehub_notice'     => $message,
 				),
 				admin_url( 'index.php' )
 			)
