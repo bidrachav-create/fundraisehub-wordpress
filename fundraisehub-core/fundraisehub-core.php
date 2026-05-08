@@ -3,7 +3,7 @@
  * Plugin Name:       FundRaiseHub Core
  * Plugin URI:        https://fundraisehub.com/
  * Description:       Core plugin for FundRaiseHub – brings fundraising campaigns directly into your WordPress site.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            FundRaiseHub
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'FUNDRAISEHUB_CORE_VERSION', '1.0.0' );
+define( 'FUNDRAISEHUB_CORE_VERSION', '1.0.1' );
 define( 'FUNDRAISEHUB_CORE_FILE', __FILE__ );
 define( 'FUNDRAISEHUB_CORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'FUNDRAISEHUB_CORE_URL', plugin_dir_url( __FILE__ ) );
