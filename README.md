@@ -57,6 +57,8 @@ When the script finishes, upload one of these files in **WordPress â†’ Plugins â
 - `dist/fundraisehub-core-{version}.zip`
 - `dist/fundraisehub-elementor-{version}.zip`
 
+GitHub Actions also builds and uploads these ZIPs as workflow artifacts on pull requests and on pushes to `main`, while tag pushes (`v*`) continue publishing them on the GitHub release.
+
 ### FundRaiseHub Core (required)
 
 1. Download or clone this repository.
