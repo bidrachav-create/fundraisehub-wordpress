@@ -88,25 +88,26 @@ class BlockRegistry {
 			true
 		);
 
-		// Resolve the API key: constant takes precedence over the stored option.
-		//
-		// The key is passed to the donate-bridge script so that it can be
-		// included in the FRH_INIT postMessage sent to the FundRaiseHub
-		// donation iframe.  FundRaiseHub uses the key to authenticate the
-		// WordPress connection before processing donations.  Passing it here
-		// exposes it in the page source, but this is limited to singular
-		// fundraisehub_campaign pages (enforced by the is_singular() guard
-		// above) and the key is transmitted only to the configured API origin
-		// via the targeted postMessage call, not broadcast to all origins.
-		$api_key = defined( 'FUNDRAISEHUB_API_KEY' ) && '' !== (string) FUNDRAISEHUB_API_KEY
+		// Generate a short-lived HMAC-SHA256 embed token so the raw API key
+		// never reaches the browser.  The token is computed server-side by
+		// signing "<site_origin>:<hour_epoch>" with the API key as the
+		// HMAC secret, using a 1-hour sliding window.  FundRaiseHub validates
+		// the token server-side by recomputing the HMAC with the stored API
+		// key for this site — the raw API key itself is never transmitted to
+		// the client or included in the postMessage payload.
+		$api_key     = defined( 'FUNDRAISEHUB_API_KEY' ) && '' !== (string) FUNDRAISEHUB_API_KEY
 			? (string) FUNDRAISEHUB_API_KEY
 			: (string) get_option( 'fundraisehub_api_key', '' );
+		$window      = (int) ( floor( time() / HOUR_IN_SECONDS ) * HOUR_IN_SECONDS );
+		$embed_token = '' !== $api_key
+			? hash_hmac( 'sha256', home_url() . ':' . $window, $api_key )
+			: '';
 
 		wp_localize_script(
 			'fundraisehub-donate-bridge',
 			'fundraisehubBridge',
 			array(
-				'apiKey'          => $api_key,
+				'embedToken'      => $embed_token,
 				'thankYouMessage' => __( 'Thank you for your donation!', 'fundraisehub-core' ),
 				'closeLabel'      => __( 'Close', 'fundraisehub-core' ),
 			)

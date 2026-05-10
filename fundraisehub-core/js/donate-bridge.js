@@ -58,7 +58,7 @@ function attachIframeInit( iframe ) {
 				{
 					type: 'FRH_INIT',
 					origin: window.location.origin,
-					apiKey: cfg.apiKey || '',
+					embedToken: cfg.embedToken || '',
 				},
 				targetOrigin
 			);
