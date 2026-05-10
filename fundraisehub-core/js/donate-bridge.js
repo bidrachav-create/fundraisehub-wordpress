@@ -55,7 +55,11 @@ function attachIframeInit( iframe ) {
 
 		if ( iframe.contentWindow ) {
 			iframe.contentWindow.postMessage(
-				{ type: 'FRH_INIT', origin: window.location.origin },
+				{
+					type: 'FRH_INIT',
+					origin: window.location.origin,
+					apiKey: cfg.apiKey || '',
+				},
 				targetOrigin
 			);
 		}

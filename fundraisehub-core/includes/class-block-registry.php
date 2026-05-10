@@ -88,10 +88,25 @@ class BlockRegistry {
 			true
 		);
 
+		// Resolve the API key: constant takes precedence over the stored option.
+		//
+		// The key is passed to the donate-bridge script so that it can be
+		// included in the FRH_INIT postMessage sent to the FundRaiseHub
+		// donation iframe.  FundRaiseHub uses the key to authenticate the
+		// WordPress connection before processing donations.  Passing it here
+		// exposes it in the page source, but this is limited to singular
+		// fundraisehub_campaign pages (enforced by the is_singular() guard
+		// above) and the key is transmitted only to the configured API origin
+		// via the targeted postMessage call, not broadcast to all origins.
+		$api_key = defined( 'FUNDRAISEHUB_API_KEY' ) && '' !== (string) FUNDRAISEHUB_API_KEY
+			? (string) FUNDRAISEHUB_API_KEY
+			: (string) get_option( 'fundraisehub_api_key', '' );
+
 		wp_localize_script(
 			'fundraisehub-donate-bridge',
 			'fundraisehubBridge',
 			array(
+				'apiKey'          => $api_key,
 				'thankYouMessage' => __( 'Thank you for your donation!', 'fundraisehub-core' ),
 				'closeLabel'      => __( 'Close', 'fundraisehub-core' ),
 			)
