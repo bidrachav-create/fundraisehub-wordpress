@@ -57,7 +57,11 @@ When the script finishes, upload one of these files in **WordPress â†’ Plugins â
 - `dist/fundraisehub-core-{version}.zip`
 - `dist/fundraisehub-elementor-{version}.zip`
 
-GitHub Actions also builds and uploads these ZIPs as workflow artifacts on pull requests and on pushes to `main`, while tag pushes (`v*`) continue publishing them on the GitHub release.
+GitHub Actions also builds these ZIPs automatically:
+
+- **Pull requests:** uploaded as workflow artifacts
+- **`main` branch pushes:** published to the prerelease **Main branch latest build** (`main-latest`) on the GitHub Releases page
+- **Tag pushes (`v*`):** published as stable tagged releases on the GitHub Releases page
 
 ### FundRaiseHub Core (required)
 
