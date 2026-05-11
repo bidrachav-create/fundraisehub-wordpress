@@ -448,22 +448,22 @@ class ApiClientTest extends TestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * test_connection() calls the design-system endpoint.
+	 * test_connection() calls the ping endpoint.
 	 */
-	public function test_connection_hits_design_system_endpoint(): void {
-		WPTestState::$http_response_queue[] = WPTestState::http_ok( array( 'name' => 'Org' ) );
+	public function test_connection_hits_ping_endpoint(): void {
+		WPTestState::$http_response_queue[] = WPTestState::http_ok( array( 'success' => true, 'data' => array( 'status' => 'ok' ) ) );
 
 		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
 		$client->test_connection();
 
-		$this->assertStringContainsString( '/api/wp/v1/design-system', WPTestState::$http_get_urls[0] );
+		$this->assertStringContainsString( '/api/wp/v1/ping', WPTestState::$http_get_urls[0] );
 	}
 
 	/**
 	 * test_connection() returns true on a successful 200 response.
 	 */
 	public function test_connection_returns_true_on_success(): void {
-		WPTestState::$http_response_queue[] = WPTestState::http_ok( array( 'name' => 'Org' ) );
+		WPTestState::$http_response_queue[] = WPTestState::http_ok( array( 'success' => true, 'data' => array( 'status' => 'ok' ) ) );
 
 		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
 		$result = $client->test_connection();
@@ -484,16 +484,64 @@ class ApiClientTest extends TestCase {
 	}
 
 	/**
+	 * test_connection() normalises 401 to an actionable auth-failed error.
+	 */
+	public function test_connection_returns_auth_failed_error_on_401(): void {
+		WPTestState::$http_response_queue[] = WPTestState::http_error( 401 );
+
+		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
+		$result = $client->test_connection();
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'fundraisehub_api_auth_failed', $result->get_error_code() );
+		$error_data = $result->get_error_data();
+		$this->assertIsArray( $error_data );
+		$this->assertSame( 401, $error_data['status'] );
+	}
+
+	/**
+	 * test_connection() normalises 429 to a rate-limited error.
+	 */
+	public function test_connection_returns_rate_limited_error_on_429(): void {
+		WPTestState::$http_response_queue[] = WPTestState::http_error( 429 );
+
+		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
+		$result = $client->test_connection();
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'fundraisehub_api_rate_limited', $result->get_error_code() );
+		$error_data = $result->get_error_data();
+		$this->assertIsArray( $error_data );
+		$this->assertSame( 429, $error_data['status'] );
+	}
+
+	/**
+	 * test_connection() normalises 404 to a not-found / wrong-URL error.
+	 */
+	public function test_connection_returns_not_found_error_on_404(): void {
+		WPTestState::$http_response_queue[] = WPTestState::http_error( 404 );
+
+		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
+		$result = $client->test_connection();
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'fundraisehub_api_not_found', $result->get_error_code() );
+		$error_data = $result->get_error_data();
+		$this->assertIsArray( $error_data );
+		$this->assertSame( 404, $error_data['status'] );
+	}
+
+	/**
 	 * test_connection() must NOT serve a cached response (always live).
 	 */
 	public function test_connection_bypasses_transient_cache(): void {
-		// Prime the transient with what would be the cached value.
+		// Prime the transient with what would be the cached value for ping.
 		$version       = 1;
-		$transient_key = 'fundraisehub_api_v' . $version . '_' . md5( 'design-system:[]' );
+		$transient_key = 'fundraisehub_api_v' . $version . '_' . md5( 'ping:[]' );
 		WPTestState::$transients[ $transient_key ] = array( 'stale' => true );
 
 		// Queue a live response.
-		WPTestState::$http_response_queue[] = WPTestState::http_ok( array( 'live' => true ) );
+		WPTestState::$http_response_queue[] = WPTestState::http_ok( array( 'success' => true, 'data' => array( 'status' => 'ok' ) ) );
 
 		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
 		$client->test_connection();
