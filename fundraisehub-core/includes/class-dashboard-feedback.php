@@ -294,6 +294,14 @@ class DashboardFeedback {
 	private function truncate_field( string $value, int $max_length ): string {
 		$value = trim( $value );
 
+		if ( function_exists( 'mb_strlen' ) && function_exists( 'mb_substr' ) ) {
+			if ( mb_strlen( $value, 'UTF-8' ) <= $max_length ) {
+				return $value;
+			}
+
+			return mb_substr( $value, 0, $max_length, 'UTF-8' );
+		}
+
 		if ( strlen( $value ) <= $max_length ) {
 			return $value;
 		}

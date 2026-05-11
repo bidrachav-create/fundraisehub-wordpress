@@ -159,4 +159,35 @@ class DashboardFeedbackTest extends TestCase {
 		$this->assertSame( 5000, strlen( $body['description'] ?? '' ) );
 		$this->assertSame( 5000, strlen( $body['steps'] ?? '' ) );
 	}
+
+	/**
+	 * Dashboard submissions should truncate UTF-8 text without splitting characters.
+	 */
+	public function test_handle_bug_report_submission_truncates_multibyte_fields_safely(): void {
+		if ( ! function_exists( 'mb_strlen' ) || ! function_exists( 'mb_substr' ) ) {
+			$this->markTestSkipped( 'mbstring is required for multibyte truncation assertions.' );
+		}
+
+		$_POST['fundraisehub_bug_title']       = str_repeat( '🙂', 180 );
+		$_POST['fundraisehub_bug_description'] = str_repeat( 'é', 5100 );
+		$_POST['fundraisehub_bug_steps']       = str_repeat( '界', 5100 );
+		WPTestState::$http_response_queue[]    = WPTestState::http_ok( array( 'success' => true ) );
+
+		$feedback = new DashboardFeedback();
+
+		try {
+			$feedback->handle_bug_report_submission();
+			$this->fail( 'Expected WPTestRedirectException was not thrown.' );
+		} catch ( WPTestRedirectException $e ) {
+			$this->assertStringContainsString( 'fundraisehub_status=success', $e->getMessage() );
+		}
+
+		$args = WPTestState::$http_post_args[0] ?? array();
+		$body = json_decode( (string) ( $args['body'] ?? '' ), true );
+
+		$this->assertIsArray( $body );
+		$this->assertSame( 150, mb_strlen( (string) ( $body['title'] ?? '' ), 'UTF-8' ) );
+		$this->assertSame( 5000, mb_strlen( (string) ( $body['description'] ?? '' ), 'UTF-8' ) );
+		$this->assertSame( 5000, mb_strlen( (string) ( $body['steps'] ?? '' ), 'UTF-8' ) );
+	}
 }

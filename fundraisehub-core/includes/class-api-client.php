@@ -453,6 +453,10 @@ class ApiClient {
 			);
 		}
 
+		if ( array_key_exists( 'success', $data ) && array_key_exists( 'data', $data ) && is_array( $data['data'] ) ) {
+			return $data['data'];
+		}
+
 		return $data;
 	}
 
@@ -488,13 +492,10 @@ class ApiClient {
 	 * @return mixed[]
 	 */
 	private function extract_contract_headers( array $response ): array {
-		$raw_headers = $response['headers'] ?? array();
-		if ( ! is_array( $raw_headers ) ) {
-			return array();
-		}
+		$raw_headers = wp_remote_retrieve_headers( $response );
+		$headers     = $this->normalize_headers( $raw_headers );
 
-		$headers = array_change_key_case( $raw_headers, CASE_LOWER );
-		$meta    = array();
+		$meta = array();
 
 		if ( isset( $headers['x-frh-wp-contract-version'] ) ) {
 			$meta['x-frh-wp-contract-version'] = (string) $headers['x-frh-wp-contract-version'];
@@ -505,5 +506,38 @@ class ApiClient {
 		}
 
 		return $meta;
+	}
+
+	/**
+	 * Normalize header collections returned by the WordPress HTTP API into arrays.
+	 *
+	 * @param mixed $raw_headers Header collection.
+	 *
+	 * @return string[]
+	 */
+	private function normalize_headers( mixed $raw_headers ): array {
+		if ( is_array( $raw_headers ) ) {
+			return array_change_key_case( $raw_headers, CASE_LOWER );
+		}
+
+		if ( $raw_headers instanceof \Traversable ) {
+			return array_change_key_case( iterator_to_array( $raw_headers ), CASE_LOWER );
+		}
+
+		if ( is_object( $raw_headers ) ) {
+			if ( method_exists( $raw_headers, 'getAll' ) ) {
+				$all_headers = $raw_headers->getAll();
+				if ( is_array( $all_headers ) ) {
+					return array_change_key_case( $all_headers, CASE_LOWER );
+				}
+			}
+
+			$object_vars = get_object_vars( $raw_headers );
+			if ( ! empty( $object_vars ) ) {
+				return array_change_key_case( $object_vars, CASE_LOWER );
+			}
+		}
+
+		return array();
 	}
 }

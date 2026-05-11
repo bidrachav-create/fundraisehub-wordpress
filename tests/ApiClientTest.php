@@ -24,6 +24,17 @@ class ApiClientTest extends TestCase {
 		WPTestState::reset();
 	}
 
+	/**
+	 * Build a traversable header collection like wp_remote_retrieve_headers() may return.
+	 *
+	 * @param array<string, string> $headers Headers keyed by name.
+	 *
+	 * @return ArrayIterator<string, string>
+	 */
+	private function header_object( array $headers ): ArrayIterator {
+		return new ArrayIterator( $headers );
+	}
+
 	// -------------------------------------------------------------------------
 	// Constructor / configuration
 	// -------------------------------------------------------------------------
@@ -203,6 +214,32 @@ class ApiClientTest extends TestCase {
 		$this->assertSame( 'Rate limit exceeded', $result->get_error_message() );
 	}
 
+	/**
+	 * A success=true envelope with a data payload should return the inner data.
+	 */
+	public function test_get_unwraps_success_envelope_data_payload(): void {
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'success' => true,
+				'data'    => array(
+					'name' => 'Org',
+					'slug' => 'org',
+				),
+			)
+		);
+
+		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
+		$result = $client->get( 'design-system' );
+
+		$this->assertSame(
+			array(
+				'name' => 'Org',
+				'slug' => 'org',
+			),
+			$result
+		);
+	}
+
 	// -------------------------------------------------------------------------
 	// GET — transient cache
 	// -------------------------------------------------------------------------
@@ -276,7 +313,7 @@ class ApiClientTest extends TestCase {
 		WPTestState::$http_response_queue[] = array(
 			'response' => array( 'code' => 404 ),
 			'body'     => '{"error":"not found"}',
-			'headers'  => array( 'X-FRH-WP-Contract-Version' => 'v1' ),
+			'headers'  => $this->header_object( array( 'X-FRH-WP-Contract-Version' => 'v1' ) ),
 		);
 
 		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
