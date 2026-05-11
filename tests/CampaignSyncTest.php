@@ -105,11 +105,13 @@ class CampaignSyncTest extends TestCase {
 				'campaign'       => array(
 					'id'          => '13',
 					'title'       => 'Nested Campaign',
-					'amountRaised' => 225,
-					'goalAmount'  => 900,
+					'amountRaised' => '225',
+					'goalAmount'  => '900',
 				),
 				'teams'          => array( array( 'name' => 'Team One' ) ),
 				'comments'       => array( array( 'message' => 'Go!' ) ),
+				'paymentConfig'  => array( 'gatewayType' => 'stripe', 'hasGateway' => true ),
+				'rafflePackages' => array( array( 'id' => 'pkg-1' ) ),
 				'recentDonations' => array( array( 'donorName' => 'Alice', 'amount' => 50 ) ),
 			),
 		);
@@ -120,9 +122,12 @@ class CampaignSyncTest extends TestCase {
 
 		$this->assertSame( '13', $result['id'] );
 		$this->assertSame( 'Nested Campaign', $result['title'] );
-		$this->assertSame( 225.0, $result['amount_raised'] );
+		$this->assertSame( '225', $result['amount_raised'] );
+		$this->assertSame( '900', $result['goal_amount'] );
 		$this->assertCount( 1, $result['teams'] );
 		$this->assertCount( 1, $result['comments'] );
+		$this->assertSame( 'stripe', $result['paymentConfig']['gatewayType'] ?? null );
+		$this->assertCount( 1, $result['rafflePackages'] ?? array() );
 		$this->assertCount( 1, $result['recentDonations'] );
 		$this->assertCount( 1, $result['donors'] );
 		$this->assertSame( 'Alice', $result['recentDonations'][0]['name'] ?? null );
@@ -135,10 +140,10 @@ class CampaignSyncTest extends TestCase {
 	public function test_get_campaign_normalizes_currency_fields(): void {
 		$raw = array(
 			'data' => array(
-				'campaign' => array(
-					'id'            => '88',
-					'title'         => 'Currency Campaign',
-					'currencyCode'  => 'usd',
+					'campaign' => array(
+						'id'            => '88',
+						'title'         => 'Currency Campaign',
+						'currencyCode'  => 'usd',
 					'currencySymbol' => '$',
 				),
 			),
@@ -404,8 +409,8 @@ class CampaignSyncTest extends TestCase {
 					'campaign' => array(
 						'id'          => '42',
 						'title'       => 'My Campaign',
-						'amountRaised' => 123,
-						'goalAmount'  => 456,
+						'amountRaised' => '123',
+						'goalAmount'  => '456',
 					),
 					'teams'    => array( array( 'name' => 'Team A' ) ),
 				),

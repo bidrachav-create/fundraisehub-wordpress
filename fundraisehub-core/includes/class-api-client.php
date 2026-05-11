@@ -52,7 +52,6 @@ class ApiClient {
 	 *   1. Explicit constructor argument (highest priority).
 	 *   2. PHP constant (FUNDRAISEHUB_API_URL / FUNDRAISEHUB_API_KEY).
 	 *   3. WordPress option stored in the database.
-	 *   4. Built-in default (URL only).
 	 *
 	 * @param string $base_url Base URL of the remote API (no trailing slash).
 	 * @param string $api_key  API key / token.
@@ -70,7 +69,7 @@ class ApiClient {
 				// Fall back to the legacy option key used before the rename so that
 				// existing installs do not silently revert to the default URL.
 				if ( '' === $resolved_url ) {
-					$resolved_url = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
+					$resolved_url = (string) get_option( 'fundraisehub_site_url', '' );
 				}
 			}
 		}
@@ -123,6 +122,11 @@ class ApiClient {
 	 * @return mixed[]|\WP_Error Decoded JSON body on success, WP_Error on failure.
 	 */
 	public function get( string $endpoint, array $params = array() ): array|\WP_Error {
+		$config_error = $this->validate_configuration();
+		if ( is_wp_error( $config_error ) ) {
+			return $config_error;
+		}
+
 		// Build a safe, fixed-length transient key.
 		// Hashing both endpoint and params avoids issues with '/' characters in endpoint
 		// paths being altered/truncated by WordPress's transient key sanitisation, and
@@ -168,6 +172,11 @@ class ApiClient {
 	 * @return mixed[]|\WP_Error Decoded JSON body on success, WP_Error on failure.
 	 */
 	public function post( string $endpoint, array $body = array() ): array|\WP_Error {
+		$config_error = $this->validate_configuration();
+		if ( is_wp_error( $config_error ) ) {
+			return $config_error;
+		}
+
 		$url = $this->build_url( $endpoint );
 
 		$response = wp_remote_post(
@@ -234,6 +243,11 @@ class ApiClient {
 	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
 	public function test_connection(): bool|\WP_Error {
+		$config_error = $this->validate_configuration();
+		if ( is_wp_error( $config_error ) ) {
+			return $config_error;
+		}
+
 		$url = $this->build_url( 'design-system' );
 
 		$response = wp_remote_get(
@@ -267,6 +281,39 @@ class ApiClient {
 	 */
 	private function get_cache_version(): int {
 		return (int) get_option( self::CACHE_VER_OPTION, 1 );
+	}
+
+	/**
+	 * Validate API URL and authentication configuration before making requests.
+	 *
+	 * @return null|\WP_Error
+	 */
+	private function validate_configuration(): ?\WP_Error {
+		if ( '' === $this->base_url ) {
+			return new \WP_Error(
+				'fundraisehub_api_missing_url',
+				__( 'FundRaiseHub API URL is not configured.', 'fundraisehub-core' )
+			);
+		}
+
+		$scheme = (string) wp_parse_url( $this->base_url, PHP_URL_SCHEME );
+		$host   = (string) wp_parse_url( $this->base_url, PHP_URL_HOST );
+
+		if ( '' === $scheme || '' === $host || ! in_array( $scheme, array( 'http', 'https' ), true ) ) {
+			return new \WP_Error(
+				'fundraisehub_api_invalid_url',
+				__( 'FundRaiseHub API URL must be a valid http or https URL.', 'fundraisehub-core' )
+			);
+		}
+
+		if ( '' === $this->api_key ) {
+			return new \WP_Error(
+				'fundraisehub_api_missing_key',
+				__( 'FundRaiseHub API key is not configured.', 'fundraisehub-core' )
+			);
+		}
+
+		return null;
 	}
 
 	/**
@@ -353,26 +400,110 @@ class ApiClient {
 		}
 
 		$status_code = (int) wp_remote_retrieve_response_code( $response );
+		$body        = wp_remote_retrieve_body( $response );
+		$data        = json_decode( $body, true );
+		$headers     = $this->extract_contract_headers( $response );
 
 		if ( $status_code < 200 || $status_code >= 300 ) {
+			$error_message = $this->extract_error_message( is_array( $data ) ? $data : array() );
+
 			return new \WP_Error(
 				'fundraisehub_api_error',
-				/* translators: %d: HTTP status code */
-				sprintf( __( 'FundRaiseHub API returned HTTP %d.', 'fundraisehub-core' ), $status_code ),
-				array( 'status' => $status_code )
+				'' !== $error_message
+					? $error_message
+					: sprintf(
+						/* translators: %d: HTTP status code */
+						__( 'FundRaiseHub API returned HTTP %d.', 'fundraisehub-core' ),
+						$status_code
+					),
+				array(
+					'status'  => $status_code,
+					'headers' => $headers,
+				)
 			);
 		}
-
-		$body = wp_remote_retrieve_body( $response );
-		$data = json_decode( $body, true );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
 			return new \WP_Error(
 				'fundraisehub_json_error',
-				__( 'FundRaiseHub API returned invalid JSON.', 'fundraisehub-core' )
+				__( 'FundRaiseHub API returned invalid JSON.', 'fundraisehub-core' ),
+				array(
+					'status'  => $status_code,
+					'headers' => $headers,
+				)
 			);
 		}
 
-		return is_array( $data ) ? $data : array();
+		if ( ! is_array( $data ) ) {
+			return array();
+		}
+
+		if ( array_key_exists( 'success', $data ) && empty( $data['success'] ) ) {
+			$error_message = $this->extract_error_message( $data );
+
+			return new \WP_Error(
+				'fundraisehub_api_error',
+				'' !== $error_message
+					? $error_message
+					: __( 'FundRaiseHub API returned an unknown error.', 'fundraisehub-core' ),
+				array(
+					'status'  => $status_code,
+					'headers' => $headers,
+				)
+			);
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Extract a helpful error message from an API error envelope.
+	 *
+	 * @param mixed[] $data Decoded response body.
+	 *
+	 * @return string
+	 */
+	private function extract_error_message( array $data ): string {
+		$error = $data['error'] ?? $data['message'] ?? '';
+
+		if ( is_string( $error ) ) {
+			return trim( $error );
+		}
+
+		if ( is_array( $error ) ) {
+			$error_message = $error['message'] ?? '';
+			if ( is_string( $error_message ) ) {
+				return trim( $error_message );
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Read contract-version headers from the HTTP response for diagnostics.
+	 *
+	 * @param mixed[] $response Raw response from wp_remote_*.
+	 *
+	 * @return mixed[]
+	 */
+	private function extract_contract_headers( array $response ): array {
+		$raw_headers = $response['headers'] ?? array();
+		if ( ! is_array( $raw_headers ) ) {
+			return array();
+		}
+
+		$headers = array_change_key_case( $raw_headers, CASE_LOWER );
+		$meta    = array();
+
+		if ( isset( $headers['x-frh-wp-contract-version'] ) ) {
+			$meta['x-frh-wp-contract-version'] = (string) $headers['x-frh-wp-contract-version'];
+		}
+
+		if ( isset( $headers['x-frh-wp-embed-contract-version'] ) ) {
+			$meta['x-frh-wp-embed-contract-version'] = (string) $headers['x-frh-wp-embed-contract-version'];
+		}
+
+		return $meta;
 	}
 }

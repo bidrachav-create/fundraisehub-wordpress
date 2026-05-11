@@ -183,6 +183,25 @@ class ApiClientTest extends TestCase {
 		$this->assertEmpty( $result );
 	}
 
+	/**
+	 * A success=false envelope should be surfaced as a WP_Error with the API message.
+	 */
+	public function test_get_returns_wp_error_when_success_envelope_is_false(): void {
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'success' => false,
+				'error'   => 'Rate limit exceeded',
+			)
+		);
+
+		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
+		$result = $client->get( 'campaigns' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'fundraisehub_api_error', $result->get_error_code() );
+		$this->assertSame( 'Rate limit exceeded', $result->get_error_message() );
+	}
+
 	// -------------------------------------------------------------------------
 	// GET — transient cache
 	// -------------------------------------------------------------------------
@@ -256,6 +275,7 @@ class ApiClientTest extends TestCase {
 		WPTestState::$http_response_queue[] = array(
 			'response' => array( 'code' => 404 ),
 			'body'     => '{"error":"not found"}',
+			'headers'  => array( 'X-FRH-WP-Contract-Version' => 'v1' ),
 		);
 
 		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
@@ -263,7 +283,14 @@ class ApiClientTest extends TestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertSame( 'fundraisehub_api_error', $result->get_error_code() );
-		$this->assertStringContainsString( '404', $result->get_error_message() );
+		$this->assertSame( 'not found', $result->get_error_message() );
+		$this->assertSame(
+			array(
+				'status'  => 404,
+				'headers' => array( 'x-frh-wp-contract-version' => 'v1' ),
+			),
+			$result->get_error_data()
+		);
 	}
 
 	/**
@@ -350,6 +377,32 @@ class ApiClientTest extends TestCase {
 		$result = $client->post( 'donations', array() );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
+	}
+
+	/**
+	 * get() should fail fast when no API URL is configured.
+	 */
+	public function test_get_returns_wp_error_when_api_url_is_missing(): void {
+		$client = new ApiClient( '', 'key' );
+
+		$result = $client->get( 'campaigns' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'fundraisehub_api_missing_url', $result->get_error_code() );
+		$this->assertSame( 0, WPTestState::$http_get_call_count );
+	}
+
+	/**
+	 * post() should fail fast when no API key is configured.
+	 */
+	public function test_post_returns_wp_error_when_api_key_is_missing(): void {
+		$client = new ApiClient( 'https://api.fundraisehub.com', '' );
+
+		$result = $client->post( 'feedback', array( 'subject' => 'Hello' ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'fundraisehub_api_missing_key', $result->get_error_code() );
+		$this->assertSame( 0, WPTestState::$http_post_call_count );
 	}
 
 	// -------------------------------------------------------------------------

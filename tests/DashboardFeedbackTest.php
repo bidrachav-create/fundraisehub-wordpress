@@ -75,8 +75,8 @@ class DashboardFeedbackTest extends TestCase {
 
 		$this->assertSame( 'Feature request', $body['subject'] ?? null );
 		$this->assertSame( 'Please add campaign drafts.', $body['message'] ?? null );
-		$this->assertSame( 'wordpress_dashboard', $body['source'] ?? null );
 		$this->assertSame( 'https://example.org', $body['site'] ?? null );
+		$this->assertArrayNotHasKey( 'source', $body );
 	}
 
 	/**
@@ -127,10 +127,36 @@ class DashboardFeedbackTest extends TestCase {
 		$this->assertSame( 'Checkout failure', $body['title'] ?? null );
 		$this->assertSame( 'Donation modal fails to open.', $body['description'] ?? null );
 		$this->assertSame( '1. Go to campaign page 2. Click Donate', $body['steps'] ?? null );
-		$this->assertSame( 'wordpress_dashboard', $body['source'] ?? null );
 		$this->assertSame( 'https://example.org', $body['site'] ?? null );
 		$this->assertSame( '6.7', $body['wordpress'] ?? null );
 		$this->assertSame( FUNDRAISEHUB_CORE_VERSION, $body['plugin'] ?? null );
 		$this->assertSame( PHP_VERSION, $body['php'] ?? null );
+		$this->assertArrayNotHasKey( 'source', $body );
+	}
+
+	/**
+	 * Dashboard submissions should be trimmed to the backend field limits.
+	 */
+	public function test_handle_bug_report_submission_truncates_fields_to_api_limits(): void {
+		$_POST['fundraisehub_bug_title']       = str_repeat( 'T', 180 );
+		$_POST['fundraisehub_bug_description'] = str_repeat( 'D', 5100 );
+		$_POST['fundraisehub_bug_steps']       = str_repeat( 'S', 5100 );
+		WPTestState::$http_response_queue[]    = WPTestState::http_ok( array( 'success' => true ) );
+
+		$feedback = new DashboardFeedback();
+
+		try {
+			$feedback->handle_bug_report_submission();
+			$this->fail( 'Expected WPTestRedirectException was not thrown.' );
+		} catch ( WPTestRedirectException $e ) {
+			$this->assertStringContainsString( 'fundraisehub_status=success', $e->getMessage() );
+		}
+
+		$args = WPTestState::$http_post_args[0] ?? array();
+		$body = json_decode( (string) ( $args['body'] ?? '' ), true );
+
+		$this->assertSame( 150, strlen( $body['title'] ?? '' ) );
+		$this->assertSame( 5000, strlen( $body['description'] ?? '' ) );
+		$this->assertSame( 5000, strlen( $body['steps'] ?? '' ) );
 	}
 }

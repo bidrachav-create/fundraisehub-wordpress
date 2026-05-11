@@ -461,7 +461,7 @@ class CampaignSync {
 	public static function normalize_campaign_payload( array $campaign ): array {
 		if ( isset( $campaign['campaign'] ) && is_array( $campaign['campaign'] ) ) {
 			$base_campaign = $campaign['campaign'];
-			foreach ( array( 'layout', 'teams', 'ambassadors', 'comments', 'media', 'recentDonations', 'recent_donations' ) as $related_key ) {
+			foreach ( array( 'layout', 'teams', 'ambassadors', 'comments', 'media', 'recentDonations', 'recent_donations', 'paymentConfig', 'payment_config', 'rafflePackages', 'raffle_packages', 'dedicationCategories', 'dedication_categories', 'auctionPrizes', 'auction_prizes', 'auctionTiers', 'auction_tiers', 'auctionBundles', 'auction_bundles' ) as $related_key ) {
 				if ( isset( $campaign[ $related_key ] ) && is_array( $campaign[ $related_key ] ) ) {
 					$base_campaign[ $related_key ] = $campaign[ $related_key ];
 				}
@@ -485,13 +485,14 @@ class CampaignSync {
 			$campaign['description'] = (string) $description;
 		}
 
-		$amount_raised = $campaign['amount_raised'] ?? $campaign['amountRaised'] ?? $campaign['raised'] ?? 0;
-		$goal_amount   = $campaign['goal_amount'] ?? $campaign['goalAmount'] ?? $campaign['goal'] ?? 0;
-
-		$campaign['amount_raised'] = (float) $amount_raised;
-		$campaign['raised']        = (float) $amount_raised;
-		$campaign['goal_amount']   = (float) $goal_amount;
-		$campaign['goal']          = (float) $goal_amount;
+		$amount_raised             = $campaign['amount_raised'] ?? $campaign['amountRaised'] ?? $campaign['raisedAmount'] ?? $campaign['raised'] ?? 0;
+		$goal_amount               = $campaign['goal_amount'] ?? $campaign['goalAmount'] ?? $campaign['goal'] ?? 0;
+		$campaign['amount_raised'] = self::normalize_decimal_string( $amount_raised, '0' );
+		$campaign['raised']        = $campaign['amount_raised'];
+		$campaign['raisedAmount']  = $campaign['amount_raised'];
+		$campaign['goal_amount']   = self::normalize_decimal_string( $goal_amount, '0' );
+		$campaign['goal']          = $campaign['goal_amount'];
+		$campaign['goalAmount']    = $campaign['goal_amount'];
 
 		$currency = $campaign['currency'] ?? $campaign['currencyCode'] ?? $campaign['currency_code'] ?? '';
 		if ( '' !== (string) $currency ) {
@@ -508,6 +509,19 @@ class CampaignSync {
 			$campaign['donation_amounts'] = $donation_amounts;
 		}
 
+		$campaign_type = $campaign['campaign_type'] ?? $campaign['campaignType'] ?? $campaign['type'] ?? '';
+		if ( '' !== (string) $campaign_type ) {
+			$campaign['campaign_type'] = (string) $campaign_type;
+			$campaign['campaignType']  = (string) $campaign_type;
+			$campaign['type']          = (string) $campaign_type;
+		}
+
+		foreach ( array( 'status', 'startDate', 'endDate', 'colorPrimary', 'colorSecondary', 'colorAccent', 'featuredImageUrl' ) as $string_key ) {
+			if ( isset( $campaign[ $string_key ] ) && ( is_string( $campaign[ $string_key ] ) || null === $campaign[ $string_key ] ) ) {
+				$campaign[ $string_key ] = null === $campaign[ $string_key ] ? null : (string) $campaign[ $string_key ];
+			}
+		}
+
 		$teams = $campaign['teams'] ?? array();
 		if ( is_array( $teams ) ) {
 			$campaign['teams'] = $teams;
@@ -521,6 +535,35 @@ class CampaignSync {
 		$media = $campaign['media'] ?? array();
 		if ( is_array( $media ) ) {
 			$campaign['media'] = $media;
+		}
+
+		$ambassadors = $campaign['ambassadors'] ?? array();
+		if ( is_array( $ambassadors ) ) {
+			$campaign['ambassadors'] = $ambassadors;
+		}
+
+		foreach ( array( 'paymentConfig', 'payment_config' ) as $payment_config_key ) {
+			if ( isset( $campaign[ $payment_config_key ] ) && is_array( $campaign[ $payment_config_key ] ) ) {
+				$campaign['paymentConfig'] = $campaign[ $payment_config_key ];
+				break;
+			}
+		}
+
+		$collection_aliases = array(
+			'rafflePackages'      => array( 'rafflePackages', 'raffle_packages' ),
+			'dedicationCategories' => array( 'dedicationCategories', 'dedication_categories' ),
+			'auctionPrizes'       => array( 'auctionPrizes', 'auction_prizes' ),
+			'auctionTiers'        => array( 'auctionTiers', 'auction_tiers' ),
+			'auctionBundles'      => array( 'auctionBundles', 'auction_bundles' ),
+		);
+
+		foreach ( $collection_aliases as $canonical_key => $candidate_keys ) {
+			foreach ( $candidate_keys as $candidate_key ) {
+				if ( isset( $campaign[ $candidate_key ] ) && is_array( $campaign[ $candidate_key ] ) ) {
+					$campaign[ $canonical_key ] = $campaign[ $candidate_key ];
+					break;
+				}
+			}
 		}
 
 		$recent_donations = $campaign['recentDonations'] ?? $campaign['recent_donations'] ?? $campaign['donors'] ?? array();
@@ -545,6 +588,7 @@ class CampaignSync {
 		}
 		if ( '' !== (string) $banner_url ) {
 			$campaign['banner_url'] = (string) $banner_url;
+			$campaign['bannerUrl']  = (string) $banner_url;
 		}
 
 		$video_url = $campaign['video_url'] ?? $campaign['videoUrl'] ?? $campaign['video'] ?? '';
@@ -567,6 +611,31 @@ class CampaignSync {
 		}
 
 		return $campaign;
+	}
+
+	/**
+	 * Normalize monetary payloads to decimal-safe strings for storage.
+	 *
+	 * @param mixed  $value   Raw value.
+	 * @param string $default Default string when the value is empty.
+	 *
+	 * @return string
+	 */
+	private static function normalize_decimal_string( mixed $value, string $default = '' ): string {
+		if ( null === $value ) {
+			return $default;
+		}
+
+		if ( is_string( $value ) ) {
+			$value = trim( $value );
+			return '' !== $value ? $value : $default;
+		}
+
+		if ( is_int( $value ) || is_float( $value ) ) {
+			return (string) $value;
+		}
+
+		return $default;
 	}
 
 	/**

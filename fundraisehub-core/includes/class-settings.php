@@ -113,7 +113,7 @@ class Settings {
 			array(
 				'type'              => 'string',
 				'sanitize_callback' => array( $this, 'sanitize_api_url' ),
-				'default'           => 'https://app.fundraisehub.com',
+				'default'           => '',
 			)
 		);
 
@@ -232,7 +232,7 @@ class Settings {
 		// phpcs:disable WordPress.Security.NonceVerification.Missing
 		$raw_url = isset( $_POST['fundraisehub_api_url'] )
 			? sanitize_text_field( wp_unslash( (string) $_POST['fundraisehub_api_url'] ) )
-			: (string) get_option( 'fundraisehub_api_url', 'https://app.fundraisehub.com' );
+			: (string) get_option( 'fundraisehub_api_url', '' );
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
 		$api_url = esc_url_raw( $raw_url );
@@ -446,7 +446,7 @@ class Settings {
 
 		// Backward-compat: migrate from the legacy option key on first view.
 		if ( '' === $value ) {
-			$value = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
+			$value = (string) get_option( 'fundraisehub_site_url', '' );
 		}
 
 		echo '<input type="url" id="fundraisehub_api_url" name="fundraisehub_api_url" value="' . esc_attr( $value ) . '" class="regular-text" placeholder="https://app.fundraisehub.com" />';
@@ -520,7 +520,7 @@ class Settings {
 
 		// Backward-compat: fall back to legacy option key.
 		if ( '' === $api_url ) {
-			$api_url = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
+			$api_url = (string) get_option( 'fundraisehub_site_url', '' );
 		}
 
 		if ( '' === $api_key ) {
