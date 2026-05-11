@@ -76,6 +76,20 @@ No cookie/session auth is used for this API.
 
 ## 6) Core endpoints your plugin can call
 
+## 6.0 `GET /api/wp/v1/ping`
+
+Lightweight connection test. Use this to verify that a stored API key is valid
+and the connection is active **without** fetching any campaign or design data.
+Intended for plugin "Test Connection" flows.
+
+### Response
+
+- `200 OK`
+- Body: `{ "success": true, "data": { "status": "ok" } }`
+- Includes `X-FRH-WP-Contract-Version: v1`
+
+A `401` response means authentication failed — the key is missing or invalid, the connection is inactive, or the request origin is not in the connection's allowlist. The response is intentionally ambiguous between these cases. A `429` response means the key has been rate-limited.
+
 ## 6.1 `GET /api/wp/v1/campaigns`
 
 Returns published/active campaigns in the connection scope.
@@ -441,12 +455,13 @@ Create and rotate responses return plaintext `apiKey` once; store immediately.
    - API key
    - optional timeout/retry settings
 2. Build endpoint URLs from base URL (no hardcoded domain).
-3. Send `Authorization: Bearer ...` on all `/api/wp/v1/*` calls.
-4. Parse `{ success, data/error }` envelope and surface helpful admin errors.
-5. Treat monetary fields as **strings**; do not float-calculate with JS/PHP floats without decimal-safe handling.
-6. Cache reads (`campaigns`, `campaign details`, `design-system`) with short TTL to reduce rate-limit pressure.
-7. Add a key rotation UX path (update plugin config after key rotation).
-8. Never expose API key in front-end JS, page source, or logs.
+3. Send `Authorization: Bearer ...` on all `/api/wp/v1/*` calls — **on every call**, including any "Test Connection" step.
+4. Use `GET /api/wp/v1/ping` for the "Test Connection" UX step. A `200` means the connection is working. A `401` is intentionally ambiguous — it covers a missing/invalid key, an inactive connection, and an origin not in the allowlist; show the user an "authentication failed" message and prompt them to check the key and base URL rather than guessing the specific cause. A `429` means the key has been rate-limited. Do **not** interpret a `404` (wrong URL) or a network error as "invalid token" — surface the actual HTTP status.
+5. Parse `{ success, data/error }` envelope and surface helpful admin errors.
+6. Treat monetary fields as **strings**; do not float-calculate with JS/PHP floats without decimal-safe handling.
+7. Cache reads (`campaigns`, `campaign details`, `design-system`) with short TTL to reduce rate-limit pressure.
+8. Add a key rotation UX path (update plugin config after key rotation).
+9. Never expose API key in front-end JS, page source, or logs.
 
 ## 11) Backward/forward compatibility guidance
 
