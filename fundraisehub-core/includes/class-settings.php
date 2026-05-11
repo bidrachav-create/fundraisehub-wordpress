@@ -224,7 +224,7 @@ class Settings {
 			return (string) get_option( 'fundraisehub_api_url', '' );
 		}
 
-		return untrailingslashit( $sanitized );
+		return rtrim( $sanitized, '/' );
 	}
 
 	/**

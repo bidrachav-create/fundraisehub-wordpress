@@ -143,6 +143,7 @@ class ConstantOverrideTest extends TestCase {
 	 */
 	public function test_api_client_uses_key_constant_over_option(): void {
 		WPTestState::$options['fundraisehub_api_key'] = 'option-api-key';
+		WPTestState::$options['fundraisehub_api_url'] = 'https://api.example.com';
 		WPTestState::$http_response_queue[]            = WPTestState::http_ok( array() );
 
 		$client = new ApiClientWithConstantKey();
