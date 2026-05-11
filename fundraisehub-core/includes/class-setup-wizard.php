@@ -370,10 +370,7 @@ class SetupWizard {
 	private function render_step1(): void {
 		$api_url = (string) get_option( 'fundraisehub_api_url', '' );
 		if ( '' === $api_url ) {
-			$api_url = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
-		}
-		if ( '' === $api_url ) {
-			$api_url = 'https://app.fundraisehub.com';
+			$api_url = (string) get_option( 'fundraisehub_site_url', '' );
 		}
 
 		$api_key = (string) get_option( 'fundraisehub_api_key', '' );

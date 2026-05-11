@@ -24,6 +24,17 @@ class ApiClientTest extends TestCase {
 		WPTestState::reset();
 	}
 
+	/**
+	 * Build a traversable header collection like wp_remote_retrieve_headers() may return.
+	 *
+	 * @param array<string, string> $headers Headers keyed by name.
+	 *
+	 * @return ArrayIterator<string, string>
+	 */
+	private function header_object( array $headers ): ArrayIterator {
+		return new ArrayIterator( $headers );
+	}
+
 	// -------------------------------------------------------------------------
 	// Constructor / configuration
 	// -------------------------------------------------------------------------
@@ -54,6 +65,7 @@ class ApiClientTest extends TestCase {
 	public function test_constructor_falls_back_to_legacy_site_url(): void {
 		// fundraisehub_api_url is not set; legacy option is.
 		WPTestState::$options['fundraisehub_site_url'] = 'https://legacy.example.com';
+		WPTestState::$options['fundraisehub_api_key']  = 'legacy-key';
 
 		WPTestState::$http_response_queue[] = WPTestState::http_ok( array() );
 
@@ -183,6 +195,51 @@ class ApiClientTest extends TestCase {
 		$this->assertEmpty( $result );
 	}
 
+	/**
+	 * A success=false envelope should be surfaced as a WP_Error with the API message.
+	 */
+	public function test_get_returns_wp_error_when_success_envelope_is_false(): void {
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'success' => false,
+				'error'   => 'Rate limit exceeded',
+			)
+		);
+
+		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
+		$result = $client->get( 'campaigns' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'fundraisehub_api_error', $result->get_error_code() );
+		$this->assertSame( 'Rate limit exceeded', $result->get_error_message() );
+	}
+
+	/**
+	 * A success=true envelope with a data payload should return the inner data.
+	 */
+	public function test_get_unwraps_success_envelope_data_payload(): void {
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'success' => true,
+				'data'    => array(
+					'name' => 'Org',
+					'slug' => 'org',
+				),
+			)
+		);
+
+		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
+		$result = $client->get( 'design-system' );
+
+		$this->assertSame(
+			array(
+				'name' => 'Org',
+				'slug' => 'org',
+			),
+			$result
+		);
+	}
+
 	// -------------------------------------------------------------------------
 	// GET — transient cache
 	// -------------------------------------------------------------------------
@@ -256,6 +313,7 @@ class ApiClientTest extends TestCase {
 		WPTestState::$http_response_queue[] = array(
 			'response' => array( 'code' => 404 ),
 			'body'     => '{"error":"not found"}',
+			'headers'  => $this->header_object( array( 'X-FRH-WP-Contract-Version' => 'v1' ) ),
 		);
 
 		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
@@ -263,7 +321,14 @@ class ApiClientTest extends TestCase {
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertSame( 'fundraisehub_api_error', $result->get_error_code() );
-		$this->assertStringContainsString( '404', $result->get_error_message() );
+		$this->assertSame( 'not found', $result->get_error_message() );
+		$this->assertSame(
+			array(
+				'status'  => 404,
+				'headers' => array( 'x-frh-wp-contract-version' => 'v1' ),
+			),
+			$result->get_error_data()
+		);
 	}
 
 	/**
@@ -350,6 +415,32 @@ class ApiClientTest extends TestCase {
 		$result = $client->post( 'donations', array() );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
+	}
+
+	/**
+	 * get() should fail fast when no API URL is configured.
+	 */
+	public function test_get_returns_wp_error_when_api_url_is_missing(): void {
+		$client = new ApiClient( '', 'key' );
+
+		$result = $client->get( 'campaigns' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'fundraisehub_api_missing_url', $result->get_error_code() );
+		$this->assertSame( 0, WPTestState::$http_get_call_count );
+	}
+
+	/**
+	 * post() should fail fast when no API key is configured.
+	 */
+	public function test_post_returns_wp_error_when_api_key_is_missing(): void {
+		$client = new ApiClient( 'https://api.fundraisehub.com', '' );
+
+		$result = $client->post( 'feedback', array( 'subject' => 'Hello' ) );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'fundraisehub_api_missing_key', $result->get_error_code() );
+		$this->assertSame( 0, WPTestState::$http_post_call_count );
 	}
 
 	// -------------------------------------------------------------------------

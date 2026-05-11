@@ -272,6 +272,10 @@ function wp_remote_retrieve_body( array $response ): string {
 	return (string) ( $response['body'] ?? '' );
 }
 
+function wp_remote_retrieve_headers( array $response ): mixed {
+	return $response['headers'] ?? array();
+}
+
 // ---------------------------------------------------------------------------
 // Error helpers.
 // ---------------------------------------------------------------------------

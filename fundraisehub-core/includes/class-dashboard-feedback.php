@@ -144,8 +144,16 @@ class DashboardFeedback {
 			: '';
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
+		$subject = $this->truncate_field( $subject, 150 );
+		$message = $this->truncate_field( $message, 5000 );
+		$site    = $this->get_submission_site_url();
+
 		if ( '' === $subject || '' === $message ) {
 			$this->redirect_with_status( 'feedback', 'error', __( 'Please complete all feedback fields.', 'fundraisehub-core' ) );
+		}
+
+		if ( '' === $site ) {
+			$this->redirect_with_status( 'feedback', 'error', __( 'Unable to determine this WordPress site URL.', 'fundraisehub-core' ) );
 		}
 
 		$response = $this->api->post(
@@ -153,8 +161,7 @@ class DashboardFeedback {
 			array(
 				'subject' => $subject,
 				'message' => $message,
-				'source'  => 'wordpress_dashboard',
-				'site'    => home_url(),
+				'site'    => $site,
 			)
 		);
 
@@ -187,8 +194,17 @@ class DashboardFeedback {
 			: '';
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
+		$title       = $this->truncate_field( $title, 150 );
+		$description = $this->truncate_field( $description, 5000 );
+		$steps       = $this->truncate_field( $steps, 5000 );
+		$site        = $this->get_submission_site_url();
+
 		if ( '' === $title || '' === $description ) {
 			$this->redirect_with_status( 'bug', 'error', __( 'Please complete all required bug report fields.', 'fundraisehub-core' ) );
+		}
+
+		if ( '' === $site ) {
+			$this->redirect_with_status( 'bug', 'error', __( 'Unable to determine this WordPress site URL.', 'fundraisehub-core' ) );
 		}
 
 		$response = $this->api->post(
@@ -197,11 +213,10 @@ class DashboardFeedback {
 				'title'       => $title,
 				'description' => $description,
 				'steps'       => $steps,
-				'source'      => 'wordpress_dashboard',
-				'site'        => home_url(),
-				'wordpress'   => get_bloginfo( 'version' ),
-				'plugin'      => FUNDRAISEHUB_CORE_VERSION,
-				'php'         => PHP_VERSION,
+				'site'        => $site,
+				'wordpress'   => $this->truncate_field( (string) get_bloginfo( 'version' ), 50 ),
+				'plugin'      => $this->truncate_field( (string) FUNDRAISEHUB_CORE_VERSION, 50 ),
+				'php'         => $this->truncate_field( PHP_VERSION, 50 ),
 			)
 		);
 
@@ -266,5 +281,48 @@ class DashboardFeedback {
 			)
 		);
 		exit;
+	}
+
+	/**
+	 * Limit an API field to the documented maximum length.
+	 *
+	 * @param string $value      Field value.
+	 * @param int    $max_length Maximum length.
+	 *
+	 * @return string
+	 */
+	private function truncate_field( string $value, int $max_length ): string {
+		$value = trim( $value );
+
+		if ( function_exists( 'mb_strlen' ) && function_exists( 'mb_substr' ) ) {
+			if ( mb_strlen( $value, 'UTF-8' ) <= $max_length ) {
+				return $value;
+			}
+
+			return mb_substr( $value, 0, $max_length, 'UTF-8' );
+		}
+
+		if ( strlen( $value ) <= $max_length ) {
+			return $value;
+		}
+
+		return substr( $value, 0, $max_length );
+	}
+
+	/**
+	 * Build a site URL value that matches the backend contract expectations.
+	 *
+	 * @return string
+	 */
+	private function get_submission_site_url(): string {
+		$site_url = $this->truncate_field( esc_url_raw( home_url() ), 255 );
+		$scheme   = (string) wp_parse_url( $site_url, PHP_URL_SCHEME );
+		$host     = (string) wp_parse_url( $site_url, PHP_URL_HOST );
+
+		if ( '' === $scheme || '' === $host || ! in_array( $scheme, array( 'http', 'https' ), true ) ) {
+			return '';
+		}
+
+		return $site_url;
 	}
 }
