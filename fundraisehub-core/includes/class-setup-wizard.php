@@ -370,10 +370,7 @@ class SetupWizard {
 	private function render_step1(): void {
 		$api_url = (string) get_option( 'fundraisehub_api_url', '' );
 		if ( '' === $api_url ) {
-			$api_url = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
-		}
-		if ( '' === $api_url ) {
-			$api_url = 'https://app.fundraisehub.com';
+			$api_url = (string) get_option( 'fundraisehub_site_url', '' );
 		}
 
 		$api_key = (string) get_option( 'fundraisehub_api_key', '' );
@@ -423,7 +420,7 @@ class SetupWizard {
 							name="fundraisehub_api_url"
 							value="<?php echo esc_attr( $api_url ); ?>"
 							class="regular-text"
-							placeholder="https://app.fundraisehub.com"
+							placeholder="https://your-fundraisehub-domain.com"
 							required
 						/>
 						<p class="description"><?php esc_html_e( 'The base URL of your FundRaiseHub installation (no trailing slash).', 'fundraisehub-core' ); ?></p>

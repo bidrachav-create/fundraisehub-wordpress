@@ -113,7 +113,7 @@ class Settings {
 			array(
 				'type'              => 'string',
 				'sanitize_callback' => array( $this, 'sanitize_api_url' ),
-				'default'           => 'https://app.fundraisehub.com',
+				'default'           => '',
 			)
 		);
 
@@ -193,7 +193,38 @@ class Settings {
 			return (string) get_option( 'fundraisehub_api_url', '' );
 		}
 
-		return esc_url_raw( (string) $value );
+		$raw_value = trim( (string) $value );
+
+		// Allow clearing the value; ApiClient will report this at request time.
+		if ( '' === $raw_value ) {
+			return '';
+		}
+
+		$sanitized = esc_url_raw( $raw_value );
+		$scheme    = (string) wp_parse_url( $sanitized, PHP_URL_SCHEME );
+		$host      = (string) wp_parse_url( $sanitized, PHP_URL_HOST );
+
+		if ( '' === $scheme || '' === $host ) {
+			add_settings_error(
+				'fundraisehub_api_url',
+				'fundraisehub_api_url_invalid',
+				__( 'Please enter a valid FundRaiseHub API URL (for example: https://your-fundraisehub-domain.com).', 'fundraisehub-core' ),
+				'error'
+			);
+			return (string) get_option( 'fundraisehub_api_url', '' );
+		}
+
+		if ( 'https' !== strtolower( $scheme ) ) {
+			add_settings_error(
+				'fundraisehub_api_url',
+				'fundraisehub_api_url_insecure',
+				__( 'FundRaiseHub API URL must use HTTPS.', 'fundraisehub-core' ),
+				'error'
+			);
+			return (string) get_option( 'fundraisehub_api_url', '' );
+		}
+
+		return untrailingslashit( $sanitized );
 	}
 
 	/**
@@ -232,7 +263,7 @@ class Settings {
 		// phpcs:disable WordPress.Security.NonceVerification.Missing
 		$raw_url = isset( $_POST['fundraisehub_api_url'] )
 			? sanitize_text_field( wp_unslash( (string) $_POST['fundraisehub_api_url'] ) )
-			: (string) get_option( 'fundraisehub_api_url', 'https://app.fundraisehub.com' );
+			: (string) get_option( 'fundraisehub_api_url', '' );
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
 		$api_url = esc_url_raw( $raw_url );
@@ -446,10 +477,10 @@ class Settings {
 
 		// Backward-compat: migrate from the legacy option key on first view.
 		if ( '' === $value ) {
-			$value = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
+			$value = (string) get_option( 'fundraisehub_site_url', '' );
 		}
 
-		echo '<input type="url" id="fundraisehub_api_url" name="fundraisehub_api_url" value="' . esc_attr( $value ) . '" class="regular-text" placeholder="https://app.fundraisehub.com" />';
+		echo '<input type="url" id="fundraisehub_api_url" name="fundraisehub_api_url" value="' . esc_attr( $value ) . '" class="regular-text" placeholder="https://your-fundraisehub-domain.com" />';
 		echo '<p class="description">' . esc_html__( 'The base URL of your FundRaiseHub installation.', 'fundraisehub-core' ) . '</p>';
 	}
 
@@ -520,7 +551,7 @@ class Settings {
 
 		// Backward-compat: fall back to legacy option key.
 		if ( '' === $api_url ) {
-			$api_url = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
+			$api_url = (string) get_option( 'fundraisehub_site_url', '' );
 		}
 
 		if ( '' === $api_key ) {

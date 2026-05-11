@@ -52,7 +52,7 @@ class ApiClient {
 	 *   1. Explicit constructor argument (highest priority).
 	 *   2. PHP constant (FUNDRAISEHUB_API_URL / FUNDRAISEHUB_API_KEY).
 	 *   3. WordPress option stored in the database.
-	 *   4. Built-in default (URL only).
+	 *   4. Empty string (URL only; must be configured in settings).
 	 *
 	 * @param string $base_url Base URL of the remote API (no trailing slash).
 	 * @param string $api_key  API key / token.
@@ -67,10 +67,9 @@ class ApiClient {
 			} else {
 				$resolved_url = (string) get_option( 'fundraisehub_api_url', '' );
 
-				// Fall back to the legacy option key used before the rename so that
-				// existing installs do not silently revert to the default URL.
+				// Fall back to the legacy option key used before the rename.
 				if ( '' === $resolved_url ) {
-					$resolved_url = (string) get_option( 'fundraisehub_site_url', 'https://app.fundraisehub.com' );
+					$resolved_url = (string) get_option( 'fundraisehub_site_url', '' );
 				}
 			}
 		}
@@ -138,6 +137,9 @@ class ApiClient {
 		}
 
 		$url = $this->build_url( $endpoint, $params );
+		if ( is_wp_error( $url ) ) {
+			return $url;
+		}
 
 		$response = wp_remote_get(
 			$url,
@@ -169,6 +171,9 @@ class ApiClient {
 	 */
 	public function post( string $endpoint, array $body = array() ): array|\WP_Error {
 		$url = $this->build_url( $endpoint );
+		if ( is_wp_error( $url ) ) {
+			return $url;
+		}
 
 		$response = wp_remote_post(
 			$url,
@@ -235,6 +240,9 @@ class ApiClient {
 	 */
 	public function test_connection(): bool|\WP_Error {
 		$url = $this->build_url( 'design-system' );
+		if ( is_wp_error( $url ) ) {
+			return $url;
+		}
 
 		$response = wp_remote_get(
 			$url,
@@ -277,9 +285,33 @@ class ApiClient {
 	 * @param string  $endpoint Endpoint path (e.g. 'campaigns' or 'campaigns/123').
 	 * @param mixed[] $params   Optional query parameters.
 	 *
-	 * @return string Full URL.
+	 * @return string|\WP_Error Full URL or WP_Error when API URL is missing/invalid.
 	 */
-	private function build_url( string $endpoint, array $params = array() ): string {
+	private function build_url( string $endpoint, array $params = array() ): string|\WP_Error {
+		if ( '' === $this->base_url ) {
+			return new \WP_Error(
+				'fundraisehub_api_url_missing',
+				__( 'FundRaiseHub API URL is not configured.', 'fundraisehub-core' )
+			);
+		}
+
+		$scheme = (string) wp_parse_url( $this->base_url, PHP_URL_SCHEME );
+		$host   = (string) wp_parse_url( $this->base_url, PHP_URL_HOST );
+
+		if ( '' === $scheme || '' === $host ) {
+			return new \WP_Error(
+				'fundraisehub_api_url_invalid',
+				__( 'FundRaiseHub API URL is invalid.', 'fundraisehub-core' )
+			);
+		}
+
+		if ( 'https' !== strtolower( $scheme ) ) {
+			return new \WP_Error(
+				'fundraisehub_api_url_insecure',
+				__( 'FundRaiseHub API URL must use HTTPS.', 'fundraisehub-core' )
+			);
+		}
+
 		$url = $this->base_url . '/api/wp/v1/' . ltrim( $endpoint, '/' );
 
 		if ( ! empty( $params ) ) {

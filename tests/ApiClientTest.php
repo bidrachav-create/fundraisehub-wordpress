@@ -68,6 +68,30 @@ class ApiClientTest extends TestCase {
 	}
 
 	/**
+	 * Missing API URL should return a WP_Error instead of issuing a request.
+	 */
+	public function test_get_returns_wp_error_when_api_url_missing(): void {
+		$client = new ApiClient( '', 'key' );
+		$result = $client->get( 'campaigns' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'fundraisehub_api_url_missing', $result->get_error_code() );
+		$this->assertSame( 0, WPTestState::$http_get_call_count );
+	}
+
+	/**
+	 * Insecure (non-HTTPS) API URLs must be rejected.
+	 */
+	public function test_get_returns_wp_error_when_api_url_is_not_https(): void {
+		$client = new ApiClient( 'http://api.example.com', 'key' );
+		$result = $client->get( 'campaigns' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'fundraisehub_api_url_insecure', $result->get_error_code() );
+		$this->assertSame( 0, WPTestState::$http_get_call_count );
+	}
+
+	/**
 	 * Explicit params override option values.
 	 */
 	public function test_constructor_explicit_params_override_options(): void {

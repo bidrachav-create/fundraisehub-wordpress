@@ -24,6 +24,30 @@ class SettingsTest extends TestCase {
 	// -------------------------------------------------------------------------
 
 	/**
+	 * sanitize_api_url() should reject non-HTTPS URLs and keep the stored value.
+	 */
+	public function test_sanitize_api_url_rejects_non_https(): void {
+		WPTestState::$options['fundraisehub_api_url'] = 'https://stored.example.com';
+
+		$settings = new Settings();
+		$result   = $settings->sanitize_api_url( 'http://insecure.example.com' );
+
+		$this->assertSame( 'https://stored.example.com', $result );
+		$codes = array_column( WPTestState::$settings_errors, 'code' );
+		$this->assertContains( 'fundraisehub_api_url_insecure', $codes );
+	}
+
+	/**
+	 * sanitize_api_url() should normalize trailing slash for valid HTTPS URLs.
+	 */
+	public function test_sanitize_api_url_normalizes_valid_https_value(): void {
+		$settings = new Settings();
+		$result   = $settings->sanitize_api_url( 'https://api.example.com/' );
+
+		$this->assertSame( 'https://api.example.com', $result );
+	}
+
+	/**
 	 * An empty API key should be returned as-is without testing the connection.
 	 */
 	public function test_sanitize_api_key_returns_empty_string_without_connection_test(): void {
