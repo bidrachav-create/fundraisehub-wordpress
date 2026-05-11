@@ -102,6 +102,7 @@ class ConstantOverrideTest extends TestCase {
 	 */
 	public function test_api_client_uses_url_constant_over_option(): void {
 		WPTestState::$options['fundraisehub_api_url'] = 'https://option-url.example.com';
+		WPTestState::$options['fundraisehub_api_key'] = 'option-api-key';
 		WPTestState::$http_response_queue[]            = WPTestState::http_ok( array() );
 
 		$client = new ApiClientWithConstantUrl();
@@ -142,6 +143,7 @@ class ConstantOverrideTest extends TestCase {
 	 * the constant key, not the value from the DB option.
 	 */
 	public function test_api_client_uses_key_constant_over_option(): void {
+		WPTestState::$options['fundraisehub_api_url'] = 'https://option-url.example.com';
 		WPTestState::$options['fundraisehub_api_key'] = 'option-api-key';
 		WPTestState::$http_response_queue[]            = WPTestState::http_ok( array() );
 

@@ -550,11 +550,11 @@ class CampaignSync {
 		}
 
 		$collection_aliases = array(
-			'rafflePackages'      => array( 'rafflePackages', 'raffle_packages' ),
+			'rafflePackages'       => array( 'rafflePackages', 'raffle_packages' ),
 			'dedicationCategories' => array( 'dedicationCategories', 'dedication_categories' ),
-			'auctionPrizes'       => array( 'auctionPrizes', 'auction_prizes' ),
-			'auctionTiers'        => array( 'auctionTiers', 'auction_tiers' ),
-			'auctionBundles'      => array( 'auctionBundles', 'auction_bundles' ),
+			'auctionPrizes'        => array( 'auctionPrizes', 'auction_prizes' ),
+			'auctionTiers'         => array( 'auctionTiers', 'auction_tiers' ),
+			'auctionBundles'       => array( 'auctionBundles', 'auction_bundles' ),
 		);
 
 		foreach ( $collection_aliases as $canonical_key => $candidate_keys ) {
@@ -616,26 +616,26 @@ class CampaignSync {
 	/**
 	 * Normalize monetary payloads to decimal-safe strings for storage.
 	 *
-	 * @param mixed  $value   Raw value.
-	 * @param string $default Default string when the value is empty.
+	 * @param mixed  $value         Raw value.
+	 * @param string $default_value Default string when the value is empty.
 	 *
 	 * @return string
 	 */
-	private static function normalize_decimal_string( mixed $value, string $default = '' ): string {
+	private static function normalize_decimal_string( mixed $value, string $default_value = '' ): string {
 		if ( null === $value ) {
-			return $default;
+			return $default_value;
 		}
 
 		if ( is_string( $value ) ) {
 			$value = trim( $value );
-			return '' !== $value ? $value : $default;
+			return '' !== $value ? $value : $default_value;
 		}
 
 		if ( is_int( $value ) || is_float( $value ) ) {
 			return (string) $value;
 		}
 
-		return $default;
+		return $default_value;
 	}
 
 	/**

@@ -54,6 +54,7 @@ class ApiClientTest extends TestCase {
 	public function test_constructor_falls_back_to_legacy_site_url(): void {
 		// fundraisehub_api_url is not set; legacy option is.
 		WPTestState::$options['fundraisehub_site_url'] = 'https://legacy.example.com';
+		WPTestState::$options['fundraisehub_api_key']  = 'legacy-key';
 
 		WPTestState::$http_response_queue[] = WPTestState::http_ok( array() );
 
