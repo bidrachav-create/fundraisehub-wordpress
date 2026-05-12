@@ -207,9 +207,7 @@ class ApiClient {
 
 		$url = $this->build_url( $endpoint, $params );
 
-		$response = $this->http_get_with_auth( $url );
-
-		$result = $this->parse_response( $response );
+		$result = $this->http_get_with_auth( $url );
 
 		if ( ! is_wp_error( $result ) ) {
 			set_transient( $transient_key, $result, self::CACHE_TTL );
@@ -237,9 +235,7 @@ class ApiClient {
 
 		$url = $this->build_url( $endpoint );
 
-		$response = $this->http_post_json_with_auth( $url, $body );
-
-		return $this->parse_response( $response );
+		return $this->http_post_json_with_auth( $url, $body );
 	}
 
 	/**
@@ -303,9 +299,7 @@ class ApiClient {
 
 		$url = $this->build_url( 'ping' );
 
-		$response = $this->http_get_with_auth( $url );
-
-		$result = $this->parse_response( $response );
+		$result = $this->http_get_with_auth( $url );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -438,9 +432,9 @@ class ApiClient {
 			)
 		);
 
-		$parsed = $this->parse_response( $response );
+		$result = $this->parse_response( $response );
 
-		if ( $this->should_retry_with_refreshed_oauth( $parsed ) ) {
+		if ( $this->should_retry_with_refreshed_oauth( $result ) ) {
 			$response = wp_remote_get(
 				$url,
 				array(
@@ -448,9 +442,11 @@ class ApiClient {
 					'timeout' => 15,
 				)
 			);
+
+			return $this->parse_response( $response );
 		}
 
-		return $response;
+		return $result;
 	}
 
 	/**
@@ -474,9 +470,9 @@ class ApiClient {
 			)
 		);
 
-		$parsed = $this->parse_response( $response );
+		$result = $this->parse_response( $response );
 
-		if ( $this->should_retry_with_refreshed_oauth( $parsed ) ) {
+		if ( $this->should_retry_with_refreshed_oauth( $result ) ) {
 			$response = wp_remote_post(
 				$url,
 				array(
@@ -488,9 +484,11 @@ class ApiClient {
 					'timeout' => 15,
 				)
 			);
+
+			return $this->parse_response( $response );
 		}
 
-		return $response;
+		return $result;
 	}
 
 	/**
