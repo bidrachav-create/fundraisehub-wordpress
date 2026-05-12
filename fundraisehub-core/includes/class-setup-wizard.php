@@ -138,17 +138,33 @@ class SetupWizard {
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- verified above by check_admin_referer()
-		$api_url = esc_url_raw(
+		$api_url             = esc_url_raw(
 			sanitize_text_field(
 				wp_unslash( isset( $_POST['fundraisehub_api_url'] ) ? (string) $_POST['fundraisehub_api_url'] : '' )
 			)
 		);
-		$api_key = sanitize_text_field(
+		$api_key             = sanitize_text_field(
 			wp_unslash( isset( $_POST['fundraisehub_api_key'] ) ? (string) $_POST['fundraisehub_api_key'] : '' )
+		);
+		$oauth_client_id     = sanitize_text_field(
+			wp_unslash( isset( $_POST['fundraisehub_oauth_client_id'] ) ? (string) $_POST['fundraisehub_oauth_client_id'] : '' )
+		);
+		$oauth_client_secret = sanitize_text_field(
+			wp_unslash( isset( $_POST['fundraisehub_oauth_client_secret'] ) ? (string) $_POST['fundraisehub_oauth_client_secret'] : '' )
 		);
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
-		$client = new ApiClient( $api_url, $api_key );
+		if ( '' === $api_key ) {
+			$api_key = (string) get_option( 'fundraisehub_api_key', '' );
+		}
+		if ( '' === $oauth_client_id ) {
+			$oauth_client_id = (string) get_option( 'fundraisehub_oauth_client_id', '' );
+		}
+		if ( '' === $oauth_client_secret ) {
+			$oauth_client_secret = (string) get_option( 'fundraisehub_oauth_client_secret', '' );
+		}
+
+		$client = new ApiClient( $api_url, $api_key, $oauth_client_id, $oauth_client_secret );
 		$result = $client->test_connection();
 
 		if ( is_wp_error( $result ) ) {
@@ -167,6 +183,8 @@ class SetupWizard {
 
 		update_option( 'fundraisehub_api_url', $api_url );
 		update_option( 'fundraisehub_api_key', $api_key );
+		update_option( 'fundraisehub_oauth_client_id', $oauth_client_id );
+		update_option( 'fundraisehub_oauth_client_secret', $oauth_client_secret );
 
 		// Bust the API response cache for all endpoints ('') so new credentials
 		// take effect immediately without waiting for the transient to expire.
@@ -373,7 +391,10 @@ class SetupWizard {
 			$api_url = (string) get_option( 'fundraisehub_site_url', '' );
 		}
 
-		$api_key = (string) get_option( 'fundraisehub_api_key', '' );
+		$api_key          = (string) get_option( 'fundraisehub_api_key', '' );
+		$oauth_client_id  = (string) get_option( 'fundraisehub_oauth_client_id', '' );
+		$has_oauth_secret = '' !== (string) get_option( 'fundraisehub_oauth_client_secret', '' );
+		$has_api_key      = '' !== $api_key;
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$error = isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['error'] ) ) : '';
@@ -382,7 +403,7 @@ class SetupWizard {
 		<p>
 			<?php
 			esc_html_e(
-				'Enter your FundRaiseHub platform URL and API key. You can generate an API key in your FundRaiseHub dashboard under Settings → WordPress Connections.',
+				'Enter your FundRaiseHub platform URL and authentication credentials. OAuth Client ID/Secret is recommended. API key is available as a fallback.',
 				'fundraisehub-core'
 			);
 			?>
@@ -428,6 +449,52 @@ class SetupWizard {
 				</tr>
 				<tr>
 					<th scope="row">
+						<label for="wizard_oauth_client_id"><?php esc_html_e( 'OAuth Client ID', 'fundraisehub-core' ); ?></label>
+					</th>
+					<td>
+						<input
+							type="text"
+							id="wizard_oauth_client_id"
+							name="fundraisehub_oauth_client_id"
+							value="<?php echo esc_attr( $oauth_client_id ); ?>"
+							class="regular-text"
+							autocomplete="off"
+						/>
+						<p class="description"><?php esc_html_e( 'Recommended. Generate in FundRaiseHub → Settings → WordPress Embed.', 'fundraisehub-core' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="wizard_oauth_client_secret"><?php esc_html_e( 'OAuth Client Secret', 'fundraisehub-core' ); ?></label>
+					</th>
+					<td>
+						<span style="display:inline-flex;align-items:center;gap:6px;">
+							<input
+								type="password"
+								id="wizard_oauth_client_secret"
+								name="fundraisehub_oauth_client_secret"
+								value=""
+								class="regular-text"
+								autocomplete="off"
+								<?php if ( $has_oauth_secret ) : ?>
+								placeholder="<?php echo esc_attr__( '••••••••••• (saved)', 'fundraisehub-core' ); ?>"
+								<?php endif; ?>
+							/>
+							<button
+								type="button"
+								class="button"
+								onclick="(function(btn){var f=document.getElementById('wizard_oauth_client_secret');var show=f.type==='password';f.type=show?'text':'password';btn.textContent=show?'<?php echo esc_js( __( 'Hide', 'fundraisehub-core' ) ); ?>':'<?php echo esc_js( __( 'Show', 'fundraisehub-core' ) ); ?>';})(this)"
+							><?php esc_html_e( 'Show', 'fundraisehub-core' ); ?></button>
+						</span>
+						<?php if ( $has_oauth_secret ) : ?>
+						<p class="description"><?php esc_html_e( 'OAuth client secret is saved. Leave blank to keep the existing value.', 'fundraisehub-core' ); ?></p>
+						<?php else : ?>
+						<p class="description"><?php esc_html_e( 'Recommended auth method. Keep this secret.', 'fundraisehub-core' ); ?></p>
+						<?php endif; ?>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
 						<label for="wizard_api_key"><?php esc_html_e( 'API Key', 'fundraisehub-core' ); ?></label>
 					</th>
 					<td>
@@ -436,10 +503,12 @@ class SetupWizard {
 								type="password"
 								id="wizard_api_key"
 								name="fundraisehub_api_key"
-								value="<?php echo esc_attr( $api_key ); ?>"
+								value=""
 								class="regular-text"
 								autocomplete="off"
-								required
+								<?php if ( $has_api_key ) : ?>
+								placeholder="<?php echo esc_attr__( '••••••••••• (saved)', 'fundraisehub-core' ); ?>"
+								<?php endif; ?>
 							/>
 							<button
 								type="button"
@@ -447,7 +516,7 @@ class SetupWizard {
 								onclick="(function(btn){var f=document.getElementById('wizard_api_key');var show=f.type==='password';f.type=show?'text':'password';btn.textContent=show?'<?php echo esc_js( __( 'Hide', 'fundraisehub-core' ) ); ?>':'<?php echo esc_js( __( 'Show', 'fundraisehub-core' ) ); ?>';})(this)"
 							><?php esc_html_e( 'Show', 'fundraisehub-core' ); ?></button>
 						</span>
-						<p class="description"><?php esc_html_e( 'Your FundRaiseHub API key. Keep this secret.', 'fundraisehub-core' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Fallback auth method. Use this if OAuth is not available.', 'fundraisehub-core' ); ?></p>
 					</td>
 				</tr>
 			</table>

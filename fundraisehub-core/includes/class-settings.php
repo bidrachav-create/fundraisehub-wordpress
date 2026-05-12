@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Class Settings
  *
  * Adds a settings page under Settings > FundRaiseHub where administrators
- * can configure the API key and remote site URL.
+ * can configure OAuth/API credentials and remote site URL.
  */
 class Settings {
 
@@ -49,6 +49,8 @@ class Settings {
 		// Dismiss the setup flag after settings are saved (nonce already verified by options.php).
 		add_action( 'update_option_fundraisehub_api_key', array( $this, 'dismiss_setup_flag' ) );
 		add_action( 'update_option_fundraisehub_api_url', array( $this, 'dismiss_setup_flag' ) );
+		add_action( 'update_option_fundraisehub_oauth_client_id', array( $this, 'dismiss_setup_flag' ) );
+		add_action( 'update_option_fundraisehub_oauth_client_secret', array( $this, 'dismiss_setup_flag' ) );
 
 		// Flush rewrite rules when the campaign archive slug is changed so the
 		// new URL takes effect without requiring a manual permalink re-save.
@@ -119,6 +121,26 @@ class Settings {
 
 		register_setting(
 			self::OPTION_GROUP,
+			'fundraisehub_oauth_client_id',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_oauth_client_id' ),
+				'default'           => '',
+			)
+		);
+
+		register_setting(
+			self::OPTION_GROUP,
+			'fundraisehub_oauth_client_secret',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_oauth_client_secret' ),
+				'default'           => '',
+			)
+		);
+
+		register_setting(
+			self::OPTION_GROUP,
 			'fundraisehub_campaign_slug',
 			array(
 				'type'              => 'string',
@@ -138,6 +160,22 @@ class Settings {
 			'fundraisehub_api_url',
 			__( 'API URL', 'fundraisehub-core' ),
 			array( $this, 'render_api_url_field' ),
+			self::PAGE_SLUG,
+			'fundraisehub_api_section'
+		);
+
+		add_settings_field(
+			'fundraisehub_oauth_client_id',
+			__( 'OAuth Client ID', 'fundraisehub-core' ),
+			array( $this, 'render_oauth_client_id_field' ),
+			self::PAGE_SLUG,
+			'fundraisehub_api_section'
+		);
+
+		add_settings_field(
+			'fundraisehub_oauth_client_secret',
+			__( 'OAuth Client Secret', 'fundraisehub-core' ),
+			array( $this, 'render_oauth_client_secret_field' ),
 			self::PAGE_SLUG,
 			'fundraisehub_api_section'
 		);
@@ -222,8 +260,7 @@ class Settings {
 
 		// Empty submission while a key is already stored → keep the stored key.
 		if ( '' === $value ) {
-			$existing = (string) get_option( 'fundraisehub_api_key', '' );
-			return $existing;
+			$value = (string) get_option( 'fundraisehub_api_key', '' );
 		}
 
 		// Read the API URL from the current form submission so the test uses
@@ -236,8 +273,33 @@ class Settings {
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
 		$api_url = esc_url_raw( $raw_url );
-		$client  = new ApiClient( $api_url, $value );
-		$result  = $client->test_connection();
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		$submitted_client_id     = isset( $_POST['fundraisehub_oauth_client_id'] )
+			? sanitize_text_field( wp_unslash( (string) $_POST['fundraisehub_oauth_client_id'] ) )
+			: (string) get_option( 'fundraisehub_oauth_client_id', '' );
+		$submitted_client_secret = isset( $_POST['fundraisehub_oauth_client_secret'] )
+			? sanitize_text_field( wp_unslash( (string) $_POST['fundraisehub_oauth_client_secret'] ) )
+			: (string) get_option( 'fundraisehub_oauth_client_secret', '' );
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
+
+		if ( '' === $submitted_client_id ) {
+			$submitted_client_id = (string) get_option( 'fundraisehub_oauth_client_id', '' );
+		}
+
+		if ( '' === $submitted_client_secret ) {
+			$submitted_client_secret = (string) get_option( 'fundraisehub_oauth_client_secret', '' );
+		}
+
+		$client_id     = $this->is_oauth_client_id_env_managed() ? $this->read_oauth_client_id_constant() : $submitted_client_id;
+		$client_secret = $this->is_oauth_client_secret_env_managed() ? $this->read_oauth_client_secret_constant() : $submitted_client_secret;
+
+		if ( '' === $value && '' === $client_id && '' === $client_secret ) {
+			return $value;
+		}
+
+		$client = new ApiClient( $api_url, $value, $client_id, $client_secret );
+		$result = $client->test_connection();
 
 		if ( is_wp_error( $result ) ) {
 			add_settings_error(
@@ -260,6 +322,46 @@ class Settings {
 				__( 'FundRaiseHub API connection successful.', 'fundraisehub-core' ),
 				'success'
 			);
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Sanitize OAuth Client ID.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 *
+	 * @return string
+	 */
+	public function sanitize_oauth_client_id( mixed $value ): string {
+		if ( $this->is_oauth_client_id_env_managed() ) {
+			return (string) get_option( 'fundraisehub_oauth_client_id', '' );
+		}
+
+		$value = sanitize_text_field( (string) $value );
+		if ( '' === $value ) {
+			$value = (string) get_option( 'fundraisehub_oauth_client_id', '' );
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Sanitize OAuth Client Secret.
+	 *
+	 * @param mixed $value Raw submitted value.
+	 *
+	 * @return string
+	 */
+	public function sanitize_oauth_client_secret( mixed $value ): string {
+		if ( $this->is_oauth_client_secret_env_managed() ) {
+			return (string) get_option( 'fundraisehub_oauth_client_secret', '' );
+		}
+
+		$value = sanitize_text_field( (string) $value );
+		if ( '' === $value ) {
+			$value = (string) get_option( 'fundraisehub_oauth_client_secret', '' );
 		}
 
 		return $value;
@@ -424,7 +526,7 @@ class Settings {
 	 * Render the API section description.
 	 */
 	public function render_api_section_description(): void {
-		echo '<p>' . esc_html__( 'Enter your FundRaiseHub platform URL and API key to enable campaign synchronisation.', 'fundraisehub-core' ) . '</p>';
+		echo '<p>' . esc_html__( 'Configure your FundRaiseHub API URL and authentication. OAuth Client ID/Secret is recommended; API key remains available as fallback.', 'fundraisehub-core' ) . '</p>';
 	}
 
 	/**
@@ -523,9 +625,9 @@ class Settings {
 			$api_url = (string) get_option( 'fundraisehub_site_url', '' );
 		}
 
-		if ( '' === $api_key ) {
+		if ( '' === $api_key && ! $this->is_oauth_configured() ) {
 			echo '<p class="description">' .
-				esc_html__( 'Enter your API key and URL above, then save to test the connection.', 'fundraisehub-core' ) .
+				esc_html__( 'Enter OAuth Client ID/Secret or an API key and URL above, then save to test the connection.', 'fundraisehub-core' ) .
 				'</p>';
 			return;
 		}
@@ -605,6 +707,24 @@ class Settings {
 	}
 
 	/**
+	 * Return the value of the FUNDRAISEHUB_OAUTH_CLIENT_ID constant, or '' if not defined.
+	 *
+	 * @return string
+	 */
+	protected function read_oauth_client_id_constant(): string {
+		return defined( 'FUNDRAISEHUB_OAUTH_CLIENT_ID' ) ? (string) FUNDRAISEHUB_OAUTH_CLIENT_ID : '';
+	}
+
+	/**
+	 * Return the value of the FUNDRAISEHUB_OAUTH_CLIENT_SECRET constant, or '' if not defined.
+	 *
+	 * @return string
+	 */
+	protected function read_oauth_client_secret_constant(): string {
+		return defined( 'FUNDRAISEHUB_OAUTH_CLIENT_SECRET' ) ? (string) FUNDRAISEHUB_OAUTH_CLIENT_SECRET : '';
+	}
+
+	/**
 	 * Return true when the API URL is provided via the FUNDRAISEHUB_API_URL constant.
 	 *
 	 * @return bool
@@ -620,6 +740,24 @@ class Settings {
 	 */
 	private function is_api_key_env_managed(): bool {
 		return '' !== $this->read_api_key_constant();
+	}
+
+	/**
+	 * Return true when OAuth client ID is managed by env constant.
+	 *
+	 * @return bool
+	 */
+	private function is_oauth_client_id_env_managed(): bool {
+		return '' !== $this->read_oauth_client_id_constant();
+	}
+
+	/**
+	 * Return true when OAuth client secret is managed by env constant.
+	 *
+	 * @return bool
+	 */
+	private function is_oauth_client_secret_env_managed(): bool {
+		return '' !== $this->read_oauth_client_secret_constant();
 	}
 
 	/**
@@ -655,5 +793,83 @@ class Settings {
 		}
 
 		return $origin;
+	}
+
+	/**
+	 * Render the OAuth Client ID input field.
+	 */
+	public function render_oauth_client_id_field(): void {
+		if ( $this->is_oauth_client_id_env_managed() ) {
+			echo '<input type="text" id="fundraisehub_oauth_client_id" name="fundraisehub_oauth_client_id" value="' . esc_attr( $this->read_oauth_client_id_constant() ) . '" class="regular-text" readonly />';
+			echo '<p class="description">' . esc_html__( 'This value is set via the FUNDRAISEHUB_OAUTH_CLIENT_ID constant and cannot be changed here.', 'fundraisehub-core' ) . '</p>';
+			return;
+		}
+
+		$value = (string) get_option( 'fundraisehub_oauth_client_id', '' );
+		echo '<input type="text" id="fundraisehub_oauth_client_id" name="fundraisehub_oauth_client_id" value="' . esc_attr( $value ) . '" class="regular-text" autocomplete="off" />';
+		echo '<p class="description">' . esc_html__( 'Recommended auth method. Obtain this from FundRaiseHub → Settings → WordPress Embed.', 'fundraisehub-core' ) . '</p>';
+	}
+
+	/**
+	 * Render the OAuth Client Secret input field.
+	 */
+	public function render_oauth_client_secret_field(): void {
+		if ( $this->is_oauth_client_secret_env_managed() ) {
+			echo '<input type="password" id="fundraisehub_oauth_client_secret" name="fundraisehub_oauth_client_secret" value="" class="regular-text" readonly placeholder="' . esc_attr__( 'Set via FUNDRAISEHUB_OAUTH_CLIENT_SECRET constant', 'fundraisehub-core' ) . '" autocomplete="off" />';
+			echo '<p class="description">' . esc_html__( 'This value is set via the FUNDRAISEHUB_OAUTH_CLIENT_SECRET constant and cannot be changed here.', 'fundraisehub-core' ) . '</p>';
+			return;
+		}
+
+		$has_secret = '' !== (string) get_option( 'fundraisehub_oauth_client_secret', '' );
+		?>
+		<span style="display:inline-flex;align-items:center;gap:6px;">
+			<input
+				type="password"
+				id="fundraisehub_oauth_client_secret"
+				name="fundraisehub_oauth_client_secret"
+				value=""
+				class="regular-text"
+				autocomplete="off"
+				<?php if ( $has_secret ) : ?>
+				placeholder="<?php echo esc_attr__( '••••••••••• (saved)', 'fundraisehub-core' ); ?>"
+				<?php endif; ?>
+			/>
+			<button
+				type="button"
+				class="button"
+				id="fundraisehub_toggle_oauth_client_secret"
+				aria-controls="fundraisehub_oauth_client_secret"
+				onclick="(function(btn){
+					var f = document.getElementById('fundraisehub_oauth_client_secret');
+					var show = f.type === 'password';
+					f.type = show ? 'text' : 'password';
+					btn.textContent = show
+						? '<?php echo esc_js( __( 'Hide', 'fundraisehub-core' ) ); ?>'
+						: '<?php echo esc_js( __( 'Show', 'fundraisehub-core' ) ); ?>';
+				})(this)"
+			><?php esc_html_e( 'Show', 'fundraisehub-core' ); ?></button>
+		</span>
+		<?php if ( $has_secret ) : ?>
+		<p class="description"><?php esc_html_e( 'OAuth client secret is saved. Leave blank to keep the existing value, or enter a new value to replace it.', 'fundraisehub-core' ); ?></p>
+		<?php else : ?>
+		<p class="description"><?php esc_html_e( 'Recommended auth method. Keep this secret.', 'fundraisehub-core' ); ?></p>
+		<?php endif; ?>
+		<?php
+	}
+
+	/**
+	 * Return true when both OAuth settings are configured (or env-managed).
+	 *
+	 * @return bool
+	 */
+	private function is_oauth_configured(): bool {
+		$client_id = $this->is_oauth_client_id_env_managed()
+			? $this->read_oauth_client_id_constant()
+			: (string) get_option( 'fundraisehub_oauth_client_id', '' );
+		$secret    = $this->is_oauth_client_secret_env_managed()
+			? $this->read_oauth_client_secret_constant()
+			: (string) get_option( 'fundraisehub_oauth_client_secret', '' );
+
+		return '' !== $client_id && '' !== $secret;
 	}
 }

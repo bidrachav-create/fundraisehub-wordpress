@@ -102,6 +102,35 @@ class SetupWizardTest extends TestCase {
 		}
 	}
 
+	/**
+	 * OAuth-only credentials should be accepted and saved in step 1.
+	 */
+	public function test_handle_step1_accepts_oauth_credentials_without_api_key(): void {
+		$_POST['fundraisehub_api_url']              = 'https://api.example.com';
+		$_POST['fundraisehub_oauth_client_id']      = 'oauth-client-id';
+		$_POST['fundraisehub_oauth_client_secret']  = 'oauth-client-secret';
+		$_POST['fundraisehub_api_key']              = '';
+
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'access_token' => 'jwt',
+				'expires_in'   => 3600,
+			)
+		);
+		WPTestState::$http_response_queue[] = WPTestState::http_ok( array( 'success' => true ) );
+
+		$wizard = new SetupWizard();
+
+		try {
+			$wizard->handle_step1();
+			$this->fail( 'Expected WPTestRedirectException was not thrown' );
+		} catch ( WPTestRedirectException $e ) {
+			$this->assertSame( 'oauth-client-id', WPTestState::$options['fundraisehub_oauth_client_id'] ?? '' );
+			$this->assertSame( 'oauth-client-secret', WPTestState::$options['fundraisehub_oauth_client_secret'] ?? '' );
+			$this->assertStringContainsString( 'step=2', $e->getMessage() );
+		}
+	}
+
 	// -------------------------------------------------------------------------
 	// handle_step2()
 	// -------------------------------------------------------------------------
