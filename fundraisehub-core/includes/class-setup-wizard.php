@@ -138,15 +138,15 @@ class SetupWizard {
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- verified above by check_admin_referer()
-		$api_url = esc_url_raw(
+		$api_url             = esc_url_raw(
 			sanitize_text_field(
 				wp_unslash( isset( $_POST['fundraisehub_api_url'] ) ? (string) $_POST['fundraisehub_api_url'] : '' )
 			)
 		);
-		$api_key = sanitize_text_field(
+		$api_key             = sanitize_text_field(
 			wp_unslash( isset( $_POST['fundraisehub_api_key'] ) ? (string) $_POST['fundraisehub_api_key'] : '' )
 		);
-		$oauth_client_id = sanitize_text_field(
+		$oauth_client_id     = sanitize_text_field(
 			wp_unslash( isset( $_POST['fundraisehub_oauth_client_id'] ) ? (string) $_POST['fundraisehub_oauth_client_id'] : '' )
 		);
 		$oauth_client_secret = sanitize_text_field(
@@ -391,10 +391,10 @@ class SetupWizard {
 			$api_url = (string) get_option( 'fundraisehub_site_url', '' );
 		}
 
-		$api_key              = (string) get_option( 'fundraisehub_api_key', '' );
-		$oauth_client_id      = (string) get_option( 'fundraisehub_oauth_client_id', '' );
-		$has_oauth_secret     = '' !== (string) get_option( 'fundraisehub_oauth_client_secret', '' );
-		$has_api_key          = '' !== $api_key;
+		$api_key          = (string) get_option( 'fundraisehub_api_key', '' );
+		$oauth_client_id  = (string) get_option( 'fundraisehub_oauth_client_id', '' );
+		$has_oauth_secret = '' !== (string) get_option( 'fundraisehub_oauth_client_secret', '' );
+		$has_api_key      = '' !== $api_key;
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$error = isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['error'] ) ) : '';

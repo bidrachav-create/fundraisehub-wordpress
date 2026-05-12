@@ -393,6 +393,9 @@ class ApiClient {
 	/**
 	 * Return the default HTTP headers, including the Authorization header.
 	 *
+	 * @param bool $include_auth              Whether to include Authorization header.
+	 * @param bool $force_refresh_oauth_token Whether OAuth token refresh should be forced.
+	 *
 	 * @return string[]
 	 */
 	private function default_headers( bool $include_auth = true, bool $force_refresh_oauth_token = false ): array {

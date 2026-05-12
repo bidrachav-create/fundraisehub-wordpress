@@ -276,7 +276,7 @@ class Settings {
 		$api_url = esc_url_raw( $raw_url );
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing
-		$submitted_client_id = isset( $_POST['fundraisehub_oauth_client_id'] )
+		$submitted_client_id     = isset( $_POST['fundraisehub_oauth_client_id'] )
 			? sanitize_text_field( wp_unslash( (string) $_POST['fundraisehub_oauth_client_id'] ) )
 			: (string) get_option( 'fundraisehub_oauth_client_id', '' );
 		$submitted_client_secret = isset( $_POST['fundraisehub_oauth_client_secret'] )
@@ -292,7 +292,7 @@ class Settings {
 		}
 
 		$client = new ApiClient( $api_url, $value, $client_id, $client_secret );
-		$result  = $client->test_connection();
+		$result = $client->test_connection();
 
 		if ( is_wp_error( $result ) ) {
 			add_settings_error(
@@ -787,7 +787,6 @@ class Settings {
 
 		return $origin;
 	}
-}
 	/**
 	 * Render the OAuth Client ID input field.
 	 */
@@ -865,3 +864,4 @@ class Settings {
 
 		return '' !== $client_id && '' !== $secret;
 	}
+}
