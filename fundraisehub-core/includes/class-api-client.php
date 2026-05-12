@@ -235,10 +235,16 @@ class ApiClient {
 	}
 
 	/**
-	 * Test the API connection by calling the design-system endpoint.
+	 * Test the API connection by calling the ping endpoint.
 	 *
-	 * This method bypasses the transient cache so it always reflects the
-	 * current credentials.
+	 * Uses GET /api/wp/v1/ping — the lightweight connection test designed for
+	 * "Test Connection" flows. This method bypasses the transient cache so it
+	 * always reflects the current credentials.
+	 *
+	 * Error messages are normalised per the API contract:
+	 * - 401 → intentionally ambiguous; prompt the user to check key, URL, and origin.
+	 * - 429 → rate-limited; ask the user to wait before retrying.
+	 * - 404 → wrong URL; ask the user to check the base URL.
 	 *
 	 * @return true|\WP_Error True on success, WP_Error on failure.
 	 */
@@ -248,7 +254,7 @@ class ApiClient {
 			return $config_error;
 		}
 
-		$url = $this->build_url( 'design-system' );
+		$url = $this->build_url( 'ping' );
 
 		$response = wp_remote_get(
 			$url,
@@ -261,6 +267,36 @@ class ApiClient {
 		$result = $this->parse_response( $response );
 
 		if ( is_wp_error( $result ) ) {
+			$error_data = $result->get_error_data();
+			$status     = is_array( $error_data ) ? (int) ( $error_data['status'] ?? 0 ) : 0;
+
+			if ( 401 === $status ) {
+				return new \WP_Error(
+					'fundraisehub_api_auth_failed',
+					__(
+						'Authentication failed. Please check your API key and base URL, and ensure this site\'s origin is added to the Allowed Origins list in your FundRaiseHub settings.',
+						'fundraisehub-core'
+					),
+					$error_data
+				);
+			}
+
+			if ( 429 === $status ) {
+				return new \WP_Error(
+					'fundraisehub_api_rate_limited',
+					__( 'Request rate limit reached. Please wait a moment before testing again.', 'fundraisehub-core' ),
+					$error_data
+				);
+			}
+
+			if ( 404 === $status ) {
+				return new \WP_Error(
+					'fundraisehub_api_not_found',
+					__( 'The API URL could not be reached (HTTP 404). Please check your FundRaiseHub base URL.', 'fundraisehub-core' ),
+					$error_data
+				);
+			}
+
 			return $result;
 		}
 
