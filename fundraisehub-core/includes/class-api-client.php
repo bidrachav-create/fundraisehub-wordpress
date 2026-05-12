@@ -288,7 +288,7 @@ class ApiClient {
 	}
 
 	/**
-	 * Test the API connection by calling the design-system endpoint.
+	 * Test the API connection by calling the ping endpoint.
 	 *
 	 * This method bypasses the transient cache so it always reflects the
 	 * current credentials.

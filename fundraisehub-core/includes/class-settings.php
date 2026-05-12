@@ -260,8 +260,7 @@ class Settings {
 
 		// Empty submission while a key is already stored → keep the stored key.
 		if ( '' === $value ) {
-			$existing = (string) get_option( 'fundraisehub_api_key', '' );
-			$value    = $existing;
+			$value = (string) get_option( 'fundraisehub_api_key', '' );
 		}
 
 		// Read the API URL from the current form submission so the test uses
