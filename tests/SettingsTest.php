@@ -112,6 +112,40 @@ class SettingsTest extends TestCase {
 		unset( $_POST['fundraisehub_api_url'] );
 	}
 
+	/**
+	 * sanitize_api_key() should preserve stored OAuth credentials when the posted
+	 * OAuth fields are submitted as empty strings.
+	 */
+	public function test_sanitize_api_key_preserves_stored_oauth_credentials_when_posted_empty(): void {
+		$_POST['fundraisehub_api_url']              = 'https://from-post.example.com';
+		$_POST['fundraisehub_oauth_client_id']      = '';
+		$_POST['fundraisehub_oauth_client_secret']  = '';
+		WPTestState::$options['fundraisehub_oauth_client_id'] = 'stored-client-id';
+		WPTestState::$options['fundraisehub_oauth_client_secret'] = 'stored-client-secret';
+
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'access_token' => 'jwt-token',
+				'expires_in'   => 3600,
+			)
+		);
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'success' => true,
+				'data'    => array( 'status' => 'ok' ),
+			)
+		);
+
+		$settings = new Settings();
+		$settings->sanitize_api_key( '' );
+
+		$oauth_body = (string) ( WPTestState::$http_post_args[0]['body'] ?? '' );
+		$this->assertStringContainsString( 'client_id=stored-client-id', $oauth_body );
+		$this->assertStringContainsString( 'client_secret=stored-client-secret', $oauth_body );
+
+		unset( $_POST['fundraisehub_api_url'], $_POST['fundraisehub_oauth_client_id'], $_POST['fundraisehub_oauth_client_secret'] );
+	}
+
 	// -------------------------------------------------------------------------
 	// dismiss_setup_flag()
 	// -------------------------------------------------------------------------

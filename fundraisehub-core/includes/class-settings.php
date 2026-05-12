@@ -283,6 +283,14 @@ class Settings {
 			: (string) get_option( 'fundraisehub_oauth_client_secret', '' );
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
+		if ( '' === $submitted_client_id ) {
+			$submitted_client_id = (string) get_option( 'fundraisehub_oauth_client_id', '' );
+		}
+
+		if ( '' === $submitted_client_secret ) {
+			$submitted_client_secret = (string) get_option( 'fundraisehub_oauth_client_secret', '' );
+		}
+
 		$client_id     = $this->is_oauth_client_id_env_managed() ? $this->read_oauth_client_id_constant() : $submitted_client_id;
 		$client_secret = $this->is_oauth_client_secret_env_managed() ? $this->read_oauth_client_secret_constant() : $submitted_client_secret;
 
