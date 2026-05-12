@@ -448,15 +448,15 @@ class ApiClientTest extends TestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * test_connection() calls the design-system endpoint.
+	 * test_connection() calls the ping endpoint.
 	 */
-	public function test_connection_hits_design_system_endpoint(): void {
+	public function test_connection_hits_ping_endpoint(): void {
 		WPTestState::$http_response_queue[] = WPTestState::http_ok( array( 'name' => 'Org' ) );
 
 		$client = new ApiClient( 'https://api.fundraisehub.com', 'key' );
 		$client->test_connection();
 
-		$this->assertStringContainsString( '/api/wp/v1/design-system', WPTestState::$http_get_urls[0] );
+		$this->assertStringContainsString( '/api/wp/v1/ping', WPTestState::$http_get_urls[0] );
 	}
 
 	/**
@@ -489,7 +489,7 @@ class ApiClientTest extends TestCase {
 	public function test_connection_bypasses_transient_cache(): void {
 		// Prime the transient with what would be the cached value.
 		$version       = 1;
-		$transient_key = 'fundraisehub_api_v' . $version . '_' . md5( 'design-system:[]' );
+		$transient_key = 'fundraisehub_api_v' . $version . '_' . md5( 'ping:[]' );
 		WPTestState::$transients[ $transient_key ] = array( 'stale' => true );
 
 		// Queue a live response.
@@ -608,5 +608,56 @@ class ApiClientTest extends TestCase {
 		WPTestState::$home_url = 'https://example.org/';
 		$this->assertSame( 'https://example.org/foo', home_url( 'foo' ) );
 		$this->assertSame( 'https://example.org/bar', home_url( '/bar' ) );
+	}
+
+	/**
+	 * OAuth credentials should be exchanged for an access token and used as Bearer auth.
+	 */
+	public function test_get_uses_oauth_access_token_when_oauth_credentials_are_configured(): void {
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'access_token' => 'oauth-access-token',
+				'token_type'   => 'bearer',
+				'expires_in'   => 3600,
+			)
+		);
+		WPTestState::$http_response_queue[] = WPTestState::http_ok( array( 'ok' => true ) );
+
+		$client = new ApiClient( 'https://api.fundraisehub.com', '', 'client-id', 'client-secret' );
+		$client->get( 'campaigns' );
+
+		$this->assertStringContainsString( '/api/wp/v1/oauth/token', WPTestState::$http_post_urls[0] ?? '' );
+		$this->assertSame(
+			'Bearer oauth-access-token',
+			WPTestState::$http_get_args[0]['headers']['Authorization'] ?? ''
+		);
+	}
+
+	/**
+	 * OAuth-protected requests should refresh token and retry once on 401.
+	 */
+	public function test_get_retries_once_with_refreshed_oauth_token_on_401(): void {
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'access_token' => 'token-one',
+				'expires_in'   => 3600,
+			)
+		);
+		WPTestState::$http_response_queue[] = WPTestState::http_error( 401 );
+		WPTestState::$http_response_queue[] = WPTestState::http_ok(
+			array(
+				'access_token' => 'token-two',
+				'expires_in'   => 3600,
+			)
+		);
+		WPTestState::$http_response_queue[] = WPTestState::http_ok( array( 'ok' => true ) );
+
+		$client = new ApiClient( 'https://api.fundraisehub.com', '', 'client-id', 'client-secret' );
+		$result = $client->get( 'campaigns' );
+
+		$this->assertSame( 2, WPTestState::$http_get_call_count );
+		$this->assertSame( 2, WPTestState::$http_post_call_count );
+		$this->assertSame( 'token-two', WPTestState::$transients['fundraisehub_oauth_access_token']['access_token'] ?? '' );
+		$this->assertSame( array( 'ok' => true ), $result );
 	}
 }

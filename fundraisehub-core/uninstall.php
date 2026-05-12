@@ -22,11 +22,14 @@ global $wpdb;
 $options = array(
 	'fundraisehub_needs_setup',
 	'fundraisehub_api_key',
+	'fundraisehub_oauth_client_id',
+	'fundraisehub_oauth_client_secret',
 	'fundraisehub_api_url',
 	'fundraisehub_site_url',
 	'fundraisehub_campaign_slug',
 	'fundraisehub_api_cache_ver',
 	'fundraisehub_list_cache_ver',
+	'fundraisehub_oauth_access_token',
 );
 
 foreach ( $options as $option ) {

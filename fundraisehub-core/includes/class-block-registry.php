@@ -127,7 +127,8 @@ class BlockRegistry {
 		}
 
 		$data = array(
-			'apiKeyConfigured' => ! empty( get_option( 'fundraisehub_api_key' ) ),
+			'apiKeyConfigured' => ! empty( get_option( 'fundraisehub_api_key' ) ) || $this->is_oauth_configured(),
+			'authConfigured'   => ! empty( get_option( 'fundraisehub_api_key' ) ) || $this->is_oauth_configured(),
 			'siteUrl'          => esc_url_raw( $api_url ),
 		);
 
@@ -167,5 +168,21 @@ class BlockRegistry {
 		$context['fundraisehub/api-url']       = (string) get_post_meta( $post_id, '_fundraisehub_api_url', true );
 
 		return $context;
+	}
+
+	/**
+	 * Return true when OAuth Client ID and secret are both configured.
+	 *
+	 * @return bool
+	 */
+	private function is_oauth_configured(): bool {
+		$client_id = defined( 'FUNDRAISEHUB_OAUTH_CLIENT_ID' ) && '' !== (string) FUNDRAISEHUB_OAUTH_CLIENT_ID
+			? (string) FUNDRAISEHUB_OAUTH_CLIENT_ID
+			: (string) get_option( 'fundraisehub_oauth_client_id', '' );
+		$secret    = defined( 'FUNDRAISEHUB_OAUTH_CLIENT_SECRET' ) && '' !== (string) FUNDRAISEHUB_OAUTH_CLIENT_SECRET
+			? (string) FUNDRAISEHUB_OAUTH_CLIENT_SECRET
+			: (string) get_option( 'fundraisehub_oauth_client_secret', '' );
+
+		return '' !== $client_id && '' !== $secret;
 	}
 }

@@ -169,7 +169,7 @@ jobs:
 
               core.info( `Deleted existing ref ${ref}` );
             } catch ( error ) {
-              if ( error.status === 404 ) {
+              if ( error.status === 404 || error.status === 422 ) {
                 core.info( `No existing ref found for ${ref}` );
                 return;
               }

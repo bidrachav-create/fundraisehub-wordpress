@@ -151,4 +151,28 @@ class SettingsTest extends TestCase {
 
 		$this->assertFalse( WPTestState::$flushed_rewrite_rules );
 	}
+
+	/**
+	 * sanitize_oauth_client_id() should preserve existing value when submitted empty.
+	 */
+	public function test_sanitize_oauth_client_id_preserves_existing_value(): void {
+		WPTestState::$options['fundraisehub_oauth_client_id'] = 'existing-client-id';
+
+		$settings = new Settings();
+		$result   = $settings->sanitize_oauth_client_id( '' );
+
+		$this->assertSame( 'existing-client-id', $result );
+	}
+
+	/**
+	 * sanitize_oauth_client_secret() should preserve existing value when submitted empty.
+	 */
+	public function test_sanitize_oauth_client_secret_preserves_existing_value(): void {
+		WPTestState::$options['fundraisehub_oauth_client_secret'] = 'existing-secret';
+
+		$settings = new Settings();
+		$result   = $settings->sanitize_oauth_client_secret( '' );
+
+		$this->assertSame( 'existing-secret', $result );
+	}
 }

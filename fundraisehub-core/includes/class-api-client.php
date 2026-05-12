@@ -17,8 +17,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Class ApiClient
  *
  * Wraps WordPress HTTP API calls with authentication headers and basic
- * error handling for the FundRaiseHub platform. GET responses are cached
- * in WordPress transients for 60 seconds to reduce remote API load.
+ * error handling for the FundRaiseHub platform.
+ *
+ * Authentication priority:
+ * 1) OAuth 2.0 client credentials (recommended)
+ * 2) Legacy API key fallback
+ *
+ * GET responses are cached in WordPress transients for 60 seconds to reduce
+ * remote API load.
  */
 class ApiClient {
 
@@ -31,6 +37,12 @@ class ApiClient {
 	/** Cache time-to-live in seconds for GET responses. */
 	private const CACHE_TTL = 60;
 
+	/** Transient key for cached OAuth access token metadata. */
+	private const OAUTH_TOKEN_TRANSIENT = 'fundraisehub_oauth_access_token';
+
+	/** Number of seconds before expiry when OAuth tokens should be proactively refreshed. */
+	private const OAUTH_REFRESH_BUFFER = 100;
+
 	/**
 	 * Base URL of the FundRaiseHub API (no trailing slash).
 	 *
@@ -39,11 +51,25 @@ class ApiClient {
 	private string $base_url;
 
 	/**
-	 * API key used for Bearer token authentication.
+	 * Legacy API key used for Bearer token authentication fallback.
 	 *
 	 * @var string
 	 */
 	private string $api_key;
+
+	/**
+	 * OAuth client ID.
+	 *
+	 * @var string
+	 */
+	private string $oauth_client_id;
+
+	/**
+	 * OAuth client secret.
+	 *
+	 * @var string
+	 */
+	private string $oauth_client_secret;
 
 	/**
 	 * Constructor.
@@ -53,10 +79,12 @@ class ApiClient {
 	 *   2. PHP constant (FUNDRAISEHUB_API_URL / FUNDRAISEHUB_API_KEY).
 	 *   3. WordPress option stored in the database.
 	 *
-	 * @param string $base_url Base URL of the remote API (no trailing slash).
-	 * @param string $api_key  API key / token.
+	 * @param string $base_url           Base URL of the remote API (no trailing slash).
+	 * @param string $api_key            API key / token fallback.
+	 * @param string $oauth_client_id    OAuth client ID.
+	 * @param string $oauth_client_secret OAuth client secret.
 	 */
-	public function __construct( string $base_url = '', string $api_key = '' ) {
+	public function __construct( string $base_url = '', string $api_key = '', string $oauth_client_id = '', string $oauth_client_secret = '' ) {
 		if ( '' !== $base_url ) {
 			$resolved_url = $base_url;
 		} else {
@@ -84,6 +112,24 @@ class ApiClient {
 				? $constant_key
 				: (string) get_option( 'fundraisehub_api_key', '' );
 		}
+
+		if ( '' !== $oauth_client_id ) {
+			$this->oauth_client_id = $oauth_client_id;
+		} else {
+			$constant_client_id    = $this->read_oauth_client_id_constant();
+			$this->oauth_client_id = '' !== $constant_client_id
+				? $constant_client_id
+				: (string) get_option( 'fundraisehub_oauth_client_id', '' );
+		}
+
+		if ( '' !== $oauth_client_secret ) {
+			$this->oauth_client_secret = $oauth_client_secret;
+		} else {
+			$constant_client_secret    = $this->read_oauth_client_secret_constant();
+			$this->oauth_client_secret = '' !== $constant_client_secret
+				? $constant_client_secret
+				: (string) get_option( 'fundraisehub_oauth_client_secret', '' );
+		}
 	}
 
 	/**
@@ -108,6 +154,24 @@ class ApiClient {
 	 */
 	protected function read_api_key_constant(): string {
 		return defined( 'FUNDRAISEHUB_API_KEY' ) ? (string) FUNDRAISEHUB_API_KEY : '';
+	}
+
+	/**
+	 * Return the value of the FUNDRAISEHUB_OAUTH_CLIENT_ID constant, or '' if not defined.
+	 *
+	 * @return string
+	 */
+	protected function read_oauth_client_id_constant(): string {
+		return defined( 'FUNDRAISEHUB_OAUTH_CLIENT_ID' ) ? (string) FUNDRAISEHUB_OAUTH_CLIENT_ID : '';
+	}
+
+	/**
+	 * Return the value of the FUNDRAISEHUB_OAUTH_CLIENT_SECRET constant, or '' if not defined.
+	 *
+	 * @return string
+	 */
+	protected function read_oauth_client_secret_constant(): string {
+		return defined( 'FUNDRAISEHUB_OAUTH_CLIENT_SECRET' ) ? (string) FUNDRAISEHUB_OAUTH_CLIENT_SECRET : '';
 	}
 
 	/**
@@ -143,13 +207,7 @@ class ApiClient {
 
 		$url = $this->build_url( $endpoint, $params );
 
-		$response = wp_remote_get(
-			$url,
-			array(
-				'headers' => $this->default_headers(),
-				'timeout' => 15,
-			)
-		);
+		$response = $this->http_get_with_auth( $url );
 
 		$result = $this->parse_response( $response );
 
@@ -179,17 +237,7 @@ class ApiClient {
 
 		$url = $this->build_url( $endpoint );
 
-		$response = wp_remote_post(
-			$url,
-			array(
-				'headers' => array_merge(
-					$this->default_headers(),
-					array( 'Content-Type' => 'application/json; charset=utf-8' )
-				),
-				'body'    => wp_json_encode( $body ),
-				'timeout' => 15,
-			)
-		);
+		$response = $this->http_post_json_with_auth( $url, $body );
 
 		return $this->parse_response( $response );
 	}
@@ -209,6 +257,8 @@ class ApiClient {
 	 * @param string $endpoint_prefix Endpoint prefix to scope DB cleanup, or '' for all.
 	 */
 	public function bust_cache( string $endpoint_prefix ): void {
+		delete_transient( self::OAUTH_TOKEN_TRANSIENT );
+
 		// Bump the global version — new transient keys will differ from old ones,
 		// so external object caches will not serve stale data.
 		$new_version = $this->get_cache_version() + 1;
@@ -248,15 +298,9 @@ class ApiClient {
 			return $config_error;
 		}
 
-		$url = $this->build_url( 'design-system' );
+		$url = $this->build_url( 'ping' );
 
-		$response = wp_remote_get(
-			$url,
-			array(
-				'headers' => $this->default_headers(),
-				'timeout' => 15,
-			)
-		);
+		$response = $this->http_get_with_auth( $url );
 
 		$result = $this->parse_response( $response );
 
@@ -306,10 +350,20 @@ class ApiClient {
 			);
 		}
 
-		if ( '' === $this->api_key ) {
+		$has_oauth_client_id     = '' !== $this->oauth_client_id;
+		$has_oauth_client_secret = '' !== $this->oauth_client_secret;
+
+		if ( $has_oauth_client_id xor $has_oauth_client_secret ) {
+			return new \WP_Error(
+				'fundraisehub_api_incomplete_oauth',
+				__( 'FundRaiseHub OAuth credentials are incomplete. Provide both Client ID and Client Secret.', 'fundraisehub-core' )
+			);
+		}
+
+		if ( ! $has_oauth_client_id && '' === $this->api_key ) {
 			return new \WP_Error(
 				'fundraisehub_api_missing_key',
-				__( 'FundRaiseHub API key is not configured.', 'fundraisehub-core' )
+				__( 'FundRaiseHub authentication is not configured. Add OAuth Client ID/Secret or an API key.', 'fundraisehub-core' )
 			);
 		}
 
@@ -341,7 +395,7 @@ class ApiClient {
 	 *
 	 * @return string[]
 	 */
-	private function default_headers(): array {
+	private function default_headers( bool $include_auth = true, bool $force_refresh_oauth_token = false ): array {
 		$headers = array(
 			'Accept' => 'application/json',
 		);
@@ -352,11 +406,235 @@ class ApiClient {
 			$headers['X-FundraiseHub-Site-Origin'] = $site_origin;
 		}
 
-		if ( '' !== $this->api_key ) {
-			$headers['Authorization'] = 'Bearer ' . $this->api_key;
+		if ( $include_auth ) {
+			$authorization_header = $this->build_authorization_header( $force_refresh_oauth_token );
+			if ( '' !== $authorization_header ) {
+				$headers['Authorization'] = $authorization_header;
+			}
 		}
 
 		return $headers;
+	}
+
+	/**
+	 * Execute an authenticated GET request and retry once on 401 with a refreshed OAuth token.
+	 *
+	 * @param string $url Full request URL.
+	 *
+	 * @return mixed[]|\WP_Error
+	 */
+	private function http_get_with_auth( string $url ): array|\WP_Error {
+		$response = wp_remote_get(
+			$url,
+			array(
+				'headers' => $this->default_headers(),
+				'timeout' => 15,
+			)
+		);
+
+		$parsed = $this->parse_response( $response );
+
+		if ( $this->should_retry_with_refreshed_oauth( $parsed ) ) {
+			$response = wp_remote_get(
+				$url,
+				array(
+					'headers' => $this->default_headers( true, true ),
+					'timeout' => 15,
+				)
+			);
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Execute an authenticated JSON POST request and retry once on 401 with a refreshed OAuth token.
+	 *
+	 * @param string  $url  Full request URL.
+	 * @param mixed[] $body Request body.
+	 *
+	 * @return mixed[]|\WP_Error
+	 */
+	private function http_post_json_with_auth( string $url, array $body ): array|\WP_Error {
+		$response = wp_remote_post(
+			$url,
+			array(
+				'headers' => array_merge(
+					$this->default_headers(),
+					array( 'Content-Type' => 'application/json; charset=utf-8' )
+				),
+				'body'    => wp_json_encode( $body ),
+				'timeout' => 15,
+			)
+		);
+
+		$parsed = $this->parse_response( $response );
+
+		if ( $this->should_retry_with_refreshed_oauth( $parsed ) ) {
+			$response = wp_remote_post(
+				$url,
+				array(
+					'headers' => array_merge(
+						$this->default_headers( true, true ),
+						array( 'Content-Type' => 'application/json; charset=utf-8' )
+					),
+					'body'    => wp_json_encode( $body ),
+					'timeout' => 15,
+				)
+			);
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Return the Authorization header value, preferring OAuth access tokens when configured.
+	 *
+	 * @param bool $force_refresh_oauth_token Whether to force-refresh OAuth token before building header.
+	 *
+	 * @return string
+	 */
+	private function build_authorization_header( bool $force_refresh_oauth_token = false ): string {
+		if ( $this->has_oauth_credentials() ) {
+			$oauth_token = $this->get_oauth_access_token( $force_refresh_oauth_token );
+			if ( ! is_wp_error( $oauth_token ) && '' !== $oauth_token ) {
+				return 'Bearer ' . $oauth_token;
+			}
+		}
+
+		if ( '' !== $this->api_key ) {
+			return 'Bearer ' . $this->api_key;
+		}
+
+		return '';
+	}
+
+	/**
+	 * Return true when a retry with a refreshed OAuth token should be attempted.
+	 *
+	 * @param mixed[]|\WP_Error $result Parsed API response.
+	 *
+	 * @return bool
+	 */
+	private function should_retry_with_refreshed_oauth( array|\WP_Error $result ): bool {
+		if ( ! $this->has_oauth_credentials() || ! is_wp_error( $result ) ) {
+			return false;
+		}
+
+		$error_data = $result->get_error_data();
+		$status     = is_array( $error_data ) ? (int) ( $error_data['status'] ?? 0 ) : 0;
+
+		return 401 === $status;
+	}
+
+	/**
+	 * Return true when both OAuth client ID and secret are configured.
+	 *
+	 * @return bool
+	 */
+	private function has_oauth_credentials(): bool {
+		return '' !== $this->oauth_client_id && '' !== $this->oauth_client_secret;
+	}
+
+	/**
+	 * Retrieve an OAuth access token, using transient cache when valid.
+	 *
+	 * @param bool $force_refresh Whether to bypass token cache and fetch a new token.
+	 *
+	 * @return string|\WP_Error
+	 */
+	private function get_oauth_access_token( bool $force_refresh = false ): string|\WP_Error {
+		if ( ! $this->has_oauth_credentials() ) {
+			return '';
+		}
+
+		if ( ! $force_refresh ) {
+			$cached_token = $this->get_cached_oauth_access_token();
+			if ( '' !== $cached_token ) {
+				return $cached_token;
+			}
+		}
+
+		$token_url = $this->build_url( 'oauth/token' );
+		$response  = wp_remote_post(
+			$token_url,
+			array(
+				'headers' => array_merge(
+					$this->default_headers( false ),
+					array( 'Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8' )
+				),
+				'body'    => http_build_query(
+					array(
+						'grant_type'    => 'client_credentials',
+						'client_id'     => $this->oauth_client_id,
+						'client_secret' => $this->oauth_client_secret,
+					),
+					'',
+					'&',
+					PHP_QUERY_RFC3986
+				),
+				'timeout' => 15,
+			)
+		);
+
+		$parsed = $this->parse_response( $response );
+		if ( is_wp_error( $parsed ) ) {
+			return $parsed;
+		}
+
+		$access_token = isset( $parsed['access_token'] ) && is_string( $parsed['access_token'] )
+			? trim( $parsed['access_token'] )
+			: '';
+		$expires_in   = isset( $parsed['expires_in'] ) ? (int) $parsed['expires_in'] : HOUR_IN_SECONDS;
+		$expires_in   = $expires_in > 0 ? $expires_in : HOUR_IN_SECONDS;
+
+		if ( '' === $access_token ) {
+			return new \WP_Error(
+				'fundraisehub_oauth_token_error',
+				__( 'FundRaiseHub OAuth token response did not include an access token.', 'fundraisehub-core' )
+			);
+		}
+
+		set_transient(
+			self::OAUTH_TOKEN_TRANSIENT,
+			array(
+				'access_token' => $access_token,
+				'fetched_at'   => time(),
+				'expires_in'   => $expires_in,
+			),
+			max( MINUTE_IN_SECONDS, $expires_in )
+		);
+
+		return $access_token;
+	}
+
+	/**
+	 * Return a cached OAuth token when valid and not near expiry.
+	 *
+	 * @return string
+	 */
+	private function get_cached_oauth_access_token(): string {
+		$cached = get_transient( self::OAUTH_TOKEN_TRANSIENT );
+		if ( ! is_array( $cached ) ) {
+			return '';
+		}
+
+		$access_token = isset( $cached['access_token'] ) && is_string( $cached['access_token'] )
+			? trim( $cached['access_token'] )
+			: '';
+		$fetched_at   = isset( $cached['fetched_at'] ) ? (int) $cached['fetched_at'] : 0;
+		$expires_in   = isset( $cached['expires_in'] ) ? (int) $cached['expires_in'] : HOUR_IN_SECONDS;
+
+		if ( '' === $access_token || $fetched_at <= 0 || $expires_in <= 0 ) {
+			return '';
+		}
+
+		$age = time() - $fetched_at;
+		if ( $age >= ( $expires_in - self::OAUTH_REFRESH_BUFFER ) ) {
+			return '';
+		}
+
+		return $access_token;
 	}
 
 	/**
@@ -468,7 +746,7 @@ class ApiClient {
 	 * @return string
 	 */
 	private function extract_error_message( array $data ): string {
-		$error = $data['error'] ?? $data['message'] ?? '';
+		$error = $data['error_description'] ?? $data['error'] ?? $data['message'] ?? '';
 
 		if ( is_string( $error ) ) {
 			return trim( $error );
