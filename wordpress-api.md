@@ -27,9 +27,83 @@ Your plugin should read/log these headers for diagnostics and future version han
 
 ## 3) Authentication model
 
-### 3.1 Bearer API key
+Two authentication methods are supported. **OAuth 2.0 client credentials is the recommended approach.** The Bearer API key remains available as a simpler fallback for environments where token exchange is not practical.
 
-All `/api/wp/v1/*` routes require:
+### 3.1 OAuth 2.0 client credentials (recommended)
+
+The plugin exchanges a long-lived `clientId` + `clientSecret` (stored in plugin settings) for a **short-lived JWT access token** (1-hour TTL). The access token is then used as a Bearer token for all subsequent API calls.
+
+#### Step 1 — Obtain an access token
+
+```http
+POST /api/wp/v1/oauth/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&client_id=<clientId>&client_secret=<clientSecret>
+```
+
+`application/json` body format is also accepted:
+
+```json
+{
+  "grant_type": "client_credentials",
+  "client_id": "<clientId>",
+  "client_secret": "<clientSecret>"
+}
+```
+
+**Success response (200):**
+
+```json
+{
+  "access_token": "<jwt>",
+  "token_type": "bearer",
+  "expires_in": 3600
+}
+```
+
+**Error responses** use RFC 6749 §5.2 format:
+
+| Status | `error` | Meaning |
+|--------|---------|---------|
+| `400` | `invalid_request` | Missing or wrong `grant_type` / fields |
+| `401` | `invalid_client` | Unknown `client_id`, inactive connection, or wrong `client_secret` |
+
+#### Step 2 — Call API endpoints with the access token
+
+```http
+GET /api/wp/v1/campaigns
+Authorization: Bearer <access_token>
+```
+
+#### Token lifetime and refresh strategy
+
+- Access tokens expire after **1 hour** (`expires_in: 3600`).
+- The plugin should cache the token and re-fetch it when it expires or when a `401` is received from a data endpoint.
+- A simple pattern: store `{ access_token, fetched_at }` in plugin transients; refresh when `time() - fetched_at > 3500`.
+
+#### Provisioning OAuth credentials
+
+Generate OAuth credentials from the **WordPress Embed** settings page in the FundRaise-Hub admin:
+
+1. Navigate to **Settings → WordPress Embed**.
+2. Find the connection row and click **OAuth Credentials** (or **Regen OAuth** to replace existing credentials).
+3. Copy both the **Client ID** and **Client Secret** — the secret is shown only once.
+4. Enter both values in the plugin's settings.
+
+The admin-side API endpoint (used by the UI, not directly by the plugin) is:
+
+```http
+POST /api/organizations/:orgId/wordpress-connections/:connectionId/oauth-credentials
+```
+
+This returns `{ clientId, clientSecret, clientSecretPrefix }` once; only a hash of the secret is stored server-side.
+
+---
+
+### 3.2 Bearer API key (legacy / backup)
+
+The original long-lived API key is still supported. Use this if OAuth is not supported in your environment.
 
 ```http
 Authorization: Bearer <wordpress_connection_api_key>
@@ -37,19 +111,28 @@ Authorization: Bearer <wordpress_connection_api_key>
 
 No cookie/session auth is used for this API.
 
-### 3.2 How keys are generated/stored
+**How keys are generated/stored:**
 
 - Key format: 64 hex chars (32 random bytes).
-- Server stores only:
-  - `apiKeyHash` (SHA-256 hash)
-  - `apiKeyPrefix` (first 8 chars, for display/audit)
+- Server stores only: `apiKeyHash` (SHA-256 hash) and `apiKeyPrefix` (first 8 chars, for display/audit).
 - Plaintext key is returned only at creation/rotation time.
+
+**Which method to prefer:**
+
+| Concern | OAuth (§3.1) | API key (§3.2) |
+|---------|-------------|----------------|
+| Token exposure window | 1 hour | Indefinite |
+| Rotation required after compromise | No (token expires) | Yes |
+| Plugin setup complexity | Slightly higher | Minimal |
+| Recommended for new integrations | ✅ Yes | Fallback only |
+
+---
 
 ### 3.3 Public/private key or request-signature requirements
 
 - **There is no public/private keypair requirement currently.**
 - **There is no HMAC request signing requirement currently.**
-- Security is based on HTTPS + Bearer key + origin controls + rate limiting.
+- Security is based on HTTPS + Bearer token + origin controls + rate limiting.
 
 ## 4) Security and transport expectations
 
@@ -421,6 +504,7 @@ Supported operations:
 - `POST /api/organizations/:orgId/wordpress-connections`
 - `PUT /api/organizations/:orgId/wordpress-connections/:connectionId`
 - `POST /api/organizations/:orgId/wordpress-connections/:connectionId/rotate`
+- `POST /api/organizations/:orgId/wordpress-connections/:connectionId/oauth-credentials`
 - `DELETE /api/organizations/:orgId/wordpress-connections/:connectionId` (soft-deactivate)
 
 `POST` create body:
@@ -435,6 +519,23 @@ type CreateConnection = {
 ```
 
 Create and rotate responses return plaintext `apiKey` once; store immediately.
+
+`POST oauth-credentials` response (201):
+
+```json
+{
+  "success": true,
+  "data": {
+    "clientId": "<32-hex-char id>",
+    "clientSecret": "<64-hex-char secret>",
+    "clientSecretPrefix": "<first 8 chars, for audit>"
+  }
+}
+```
+
+Store `clientId` + `clientSecret` in the plugin immediately — the secret is not retrievable after this response.
+
+The `GET` list response includes `oauthClientId` (the current client ID or `null`) and `oauthClientSecretPrefix` (first 8 chars of the current secret or `null`). These confirm whether OAuth credentials have been provisioned for a connection without exposing secret material.
 
 ## 9) Status codes to handle in the plugin
 
@@ -452,16 +553,22 @@ Create and rotate responses return plaintext `apiKey` once; store immediately.
 
 1. Add settings for:
    - FundRaise-Hub base URL
-   - API key
+   - **OAuth Client ID** + **OAuth Client Secret** (recommended, see §3.1)
+   - API key (fallback only, see §3.2)
    - optional timeout/retry settings
 2. Build endpoint URLs from base URL (no hardcoded domain).
-3. Send `Authorization: Bearer ...` on all `/api/wp/v1/*` calls — **on every call**, including any "Test Connection" step.
-4. Use `GET /api/wp/v1/ping` for the "Test Connection" UX step. A `200` means the connection is working. A `401` is intentionally ambiguous — it covers a missing/invalid key, an inactive connection, and an origin not in the allowlist; show the user an "authentication failed" message and prompt them to check the key and base URL rather than guessing the specific cause. A `429` means the key has been rate-limited. Do **not** interpret a `404` (wrong URL) or a network error as "invalid token" — surface the actual HTTP status.
-5. Parse `{ success, data/error }` envelope and surface helpful admin errors.
-6. Treat monetary fields as **strings**; do not float-calculate with JS/PHP floats without decimal-safe handling.
-7. Cache reads (`campaigns`, `campaign details`, `design-system`) with short TTL to reduce rate-limit pressure.
-8. Add a key rotation UX path (update plugin config after key rotation).
-9. Never expose API key in front-end JS, page source, or logs.
+3. **OAuth flow (recommended):**
+   - On first use (or on `401`), call `POST /api/wp/v1/oauth/token` with `client_id` + `client_secret`.
+   - Cache the returned `access_token` with its `expires_in` (3600s); refresh proactively ~100s before expiry.
+   - Send `Authorization: Bearer <access_token>` on all `/api/wp/v1/*` data calls.
+4. **API key fallback:** send `Authorization: Bearer <api_key>` directly on all calls (no token exchange needed).
+5. Use `GET /api/wp/v1/ping` for the "Test Connection" UX step. A `200` means the connection is working. A `401` is intentionally ambiguous — it covers a missing/invalid token or key, an inactive connection, and an origin not in the allowlist; show the user an "authentication failed" message and prompt them to check credentials and base URL rather than guessing the specific cause. A `429` means the key has been rate-limited. Do **not** interpret a `404` (wrong URL) or a network error as "invalid token" — surface the actual HTTP status.
+6. Parse `{ success, data/error }` envelope and surface helpful admin errors.
+7. Treat monetary fields as **strings**; do not float-calculate with JS/PHP floats without decimal-safe handling.
+8. Cache reads (`campaigns`, `campaign details`, `design-system`) with short TTL to reduce rate-limit pressure.
+9. Add a key rotation / OAuth credential regeneration UX path (update plugin config after rotation).
+10. Never expose API key or OAuth client secret in front-end JS, page source, or logs.
+11. Never log the full `client_secret` or bearer token in WordPress debug output.
 
 ## 11) Backward/forward compatibility guidance
 
