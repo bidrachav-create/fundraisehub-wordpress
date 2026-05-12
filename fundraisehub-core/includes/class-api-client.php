@@ -251,6 +251,9 @@ class ApiClient {
 	 * because the version change causes every cached key to be effectively
 	 * unreachable; previously stored entries expire naturally via their TTL.
 	 *
+	 * The cached OAuth access token transient is also cleared so credential
+	 * changes take effect immediately.
+	 *
 	 * When no external object cache is in use the method also deletes stale
 	 * transient rows from the database directly, providing immediate cleanup.
 	 *

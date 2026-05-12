@@ -787,6 +787,7 @@ class Settings {
 
 		return $origin;
 	}
+
 	/**
 	 * Render the OAuth Client ID input field.
 	 */
